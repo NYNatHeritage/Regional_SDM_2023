@@ -7,6 +7,7 @@
 library(RSQLite)
 library(sf)
 library(dplyr)
+library(dplyr)
 
 ####
 # Assumptions
@@ -119,7 +120,7 @@ names(shp_expl$geometry) <- NULL # temp fix until sf patches error
 nm.PyFile <- paste(loc_model, model_species,"inputs/presence",paste0(baseName, "_expl.shp"), sep = "/")
 st_write(shp_expl, nm.PyFile, driver="ESRI Shapefile", delete_layer = TRUE)
 
-# also write to geopackage to get into the habit. At this point (Mar 2020),
+#TODO also write to geopackage to get into the habit. At this point (Mar 2020),
 # some custom projections don't write properly (https://github.com/r-spatial/sf/issues/1293), 
 # so transform to WGS84 first
 shp_expl_wgs84 <- st_transform(shp_expl, 4326)
@@ -216,30 +217,55 @@ st_write(ranPts_joined_wgs84, dsn = nm.gpkg, layer = nm.pylyr, delete_layer = TR
 ###
 ### remove Coincident Background points ----
 ###
-
-# get range info from the DB (as a list of HUCs)
+# 
+# # get range info from the DB (as a list of HUCs)----
+# db <- dbConnect(SQLite(),dbname=nm_db_file)
+# # The IS operator allows nulls to be equal (https://www.sqlite.org/lang_expr.html#isisnot)
+# SQLquery <- paste0("SELECT huc10_id from lkpRange ",
+#   "inner join lkpSpecies on ", 
+#   "(lkpRange.EGT_ID = lkpSpecies.EGT_ID and ", 
+#   "nullif(lkpRange.location_use_class,'') IS nullif(lkpSpecies.location_use_class,'')) ", 
+#   "where lkpSpecies.sp_code = '", model_species, "';")
+# hucList <- dbGetQuery(db, statement = SQLquery)$huc10_id
+# dbDisconnect(db)
+# rm(db)
+# 
+# op <- options()
+# options(useFancyQuotes = FALSE) #need straight quotes for query
+# # get the background data from the DB
+# db <- dbConnect(SQLite(), nm_bkgPts[1])
+# #qry <- paste0("SELECT * from ", nm_bkgPts[2], " where substr(huc12,1,10) IN (", paste(sQuote(hucList), collapse = ", ", sep = "")," );")
+# qry <- paste0("SELECT * from ", nm_bkgPts[2], " where huc10 IN (", paste(sQuote(hucList), collapse = ", ", sep = "")," );")
+# bkgd <- dbGetQuery(db, qry)
+# tcrs <- dbGetQuery(db, paste0("SELECT proj4string p from lkpCRS where table_name = '", nm_bkgPts[2], "';"))$p
+# samps <- st_sf(bkgd, geometry = st_as_sfc(bkgd$wkt, crs = tcrs))
+# options(op)
+# rm(op)
+#Get background points in range spatially-----
 db <- dbConnect(SQLite(),dbname=nm_db_file)
-# The IS operator allows nulls to be equal (https://www.sqlite.org/lang_expr.html#isisnot)
-SQLquery <- paste0("SELECT huc10_id from lkpRange ",
-  "inner join lkpSpecies on ", 
-  "(lkpRange.EGT_ID = lkpSpecies.EGT_ID and ", 
-  "nullif(lkpRange.location_use_class,'') IS nullif(lkpSpecies.location_use_class,'')) ", 
-  "where lkpSpecies.sp_code = '", model_species, "';")
-hucList <- dbGetQuery(db, statement = SQLquery)$huc10_id
+SQLquery <- paste0("SELECT model_area,file_name,file_path from lkp_species ",
+                   
+                   "where lkp_species.sp_code = '", model_species, "';")
+model_areas <- dbGetQuery(db, statement = SQLquery)
 dbDisconnect(db)
 rm(db)
 
-op <- options()
-options(useFancyQuotes = FALSE) #need straight quotes for query
-# get the background data from the DB
-db <- dbConnect(SQLite(), nm_bkgPts[1])
-#qry <- paste0("SELECT * from ", nm_bkgPts[2], " where substr(huc12,1,10) IN (", paste(sQuote(hucList), collapse = ", ", sep = "")," );")
-qry <- paste0("SELECT * from ", nm_bkgPts[2], " where huc10 IN (", paste(sQuote(hucList), collapse = ", ", sep = "")," );")
-bkgd <- dbGetQuery(db, qry)
-tcrs <- dbGetQuery(db, paste0("SELECT proj4string p from lkpCRS where table_name = '", nm_bkgPts[2], "';"))$p
-samps <- st_sf(bkgd, geometry = st_as_sfc(bkgd$wkt, crs = tcrs))
-options(op)
-rm(op)
+##If the model area is statewide- its a shapefile, so grab it direct
+if (model_areas$model_area ==1){
+  rangeClipped<-read_sf(paste0(model_areas$file_path,"/",model_areas$file_name))
+}else{  ##The custom ranges are in a gdb so use the dsn and layer seperately
+  rangeClipped<-read_sf(dsn=model_areas$file_path,layer=model_areas$file_name)
+}
+
+#test
+backgShapef <- read_sf(nm_bkgPts)
+
+#get projection info for later
+#projInfo <- backgShapef@proj4string
+
+samps<-st_intersection(backgShapef, rangeClipped)
+#Need to only keep the fields from backgShakef
+samps<- samps %>%  select(names(backgShapef))
 
 # find coincident points ----
 polybuff <- st_transform(shp_expl, st_crs(samps))
@@ -389,31 +415,32 @@ if(nrow(backgSubset) > bkgTarg){
 print(paste0("number of background pts: ", nrow(backgSubset)))
 
 #write it up and do join in sqlite (faster than downloading entire att set) ----
-st_geometry(backgSubset) <- NULL
-tmpTableName <- paste0(nm_bkgPts[2], "_", baseName)
-dbWriteTable(db, tmpTableName, backgSubset, overwrite = TRUE)
-
-# do the join, get all the data back down
-# qry <- paste0("SELECT ", tmpTableName, ".huc12, ", tmpTableName, ".wkt, ", nm_bkgPts[2], "_att.*", 
-#            " from ", tmpTableName, " INNER JOIN ", nm_bkgPts[2], "_att on ",
+# st_geometry(backgSubset) <- NULL
+# tmpTableName <- paste0(nm_bkgPts[2], "_", baseName)
+# dbWriteTable(db, tmpTableName, backgSubset, overwrite = TRUE)
+# 
+# # do the join, get all the data back down
+# # qry <- paste0("SELECT ", tmpTableName, ".huc12, ", tmpTableName, ".wkt, ", nm_bkgPts[2], "_att.*", 
+# #            " from ", tmpTableName, " INNER JOIN ", nm_bkgPts[2], "_att on ",
+# #               tmpTableName,".fid = ", nm_bkgPts[2], "_att.fid;")
+# qry <- paste0("SELECT ", tmpTableName, ".huc10, ", tmpTableName, ".wkt, ", nm_bkgPts[2], "_att.*", 
+#               " from ", tmpTableName, " INNER JOIN ", nm_bkgPts[2], "_att on ",
 #               tmpTableName,".fid = ", nm_bkgPts[2], "_att.fid;")
-qry <- paste0("SELECT ", tmpTableName, ".huc10, ", tmpTableName, ".wkt, ", nm_bkgPts[2], "_att.*", 
-              " from ", tmpTableName, " INNER JOIN ", nm_bkgPts[2], "_att on ",
-              tmpTableName,".fid = ", nm_bkgPts[2], "_att.fid;")
-bgSubsAtt <- dbGetQuery(db, qry)
-# delete the table on the db
-dbRemoveTable(db, tmpTableName)
-dbDisconnect(db)
-
-#remove extra fid column(s) (dots in colname corrupts gpkg layer for esri)
-#bgSubsAtt <- bgSubsAtt[,-grep("fid.+",names(bgSubsAtt))] #package update may have removed dot
-fidlocs <- grep("fid.*",names(bgSubsAtt))
-if(length(fidlocs) > 1){
-  bgSubsAtt <- bgSubsAtt[,-fidlocs[2:length(fidlocs)]]  
-}
+# bgSubsAtt <- dbGetQuery(db, qry)
+# # delete the table on the db
+# dbRemoveTable(db, tmpTableName)
+# dbDisconnect(db)
+# 
+# #remove extra fid column(s) (dots in colname corrupts gpkg layer for esri)
+# #bgSubsAtt <- bgSubsAtt[,-grep("fid.+",names(bgSubsAtt))] #package update may have removed dot
+# fidlocs <- grep("fid.*",names(bgSubsAtt))
+# if(length(fidlocs) > 1){
+#   bgSubsAtt <- bgSubsAtt[,-fidlocs[2:length(fidlocs)]]  
+# }
 
 
-bgSubsAtt <- bgSubsAtt[complete.cases(bgSubsAtt),]
+#bgSubsAtt <- bgSubsAtt[complete.cases(bgSubsAtt),] ##This is used when pulling backgroud pts from an sqlite
+bgSubsAtt<- backgSubset[complete.cases(backgSubset),]  ##This is used when the original selection was on attributed pts to start
 nrow(bgSubsAtt)
 
 dbName <- paste0(loc_model, "/", model_species, "/inputs/model_input/", baseName, "_att.sqlite")

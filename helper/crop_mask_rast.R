@@ -8,10 +8,10 @@ library(RODBC)
 library(RSQLite)# if using raster method for cropping instead of calling gdalwarp
 
 # needs raster list (fullL), loc_envVars, model_species
-# get range info 2024 HOTH ----
+# get range info 2024 HOTH I have already joing the multiple tables into a lkp_species table----
 ##For test
-model_species<-"bromnott2"
-nm_db_file<-"D:\\Git_Repos\\PROs\\BackEnd.sqlite"
+#model_species<-"bromnott2"
+#nm_db_file<-"D:\\Git_Repos\\PROs\\BackEnd.sqlite"
 
 db <- dbConnect(SQLite(),dbname=nm_db_file)
 SQLquery <- paste0("SELECT model_area,file_name,file_path from lkp_species ",
@@ -24,7 +24,7 @@ rm(db)
 ##If the model area is statewide- its a shapefile, so grab it direct
 if (model_areas$model_area ==1){
   rangeClipped<-read_sf(paste0(model_areas$file_path,"/",model_areas$file_name))
-}else{
+}else{  ##The custom ranges are in a gdb so use the dsn and layer seperately
   rangeClipped<-read_sf(dsn=model_areas$file_path,layer=model_areas$file_name)
 }
 # get range info OLD ----
