@@ -3,7 +3,7 @@
 
 ## start with a fresh workspace with no objects loaded
 library(here)
-library(raster)
+library(terra)
 # library(RSQLite)
 # library(sf)
 # library(snow)
@@ -89,7 +89,7 @@ predfun <- function(m, d){
   predict(m,y)
 }
 
-pd <- raster::predict(envStack_ss, xgb.full, filename = fileNm, fun=predfun, index = 2)
+pd <- terra::predict(envStack_ss, xgb.full, filename = fileNm, fun=predfun, index = 2)
 
 #, type = "response", index = 2)
 

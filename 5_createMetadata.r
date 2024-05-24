@@ -16,10 +16,12 @@ library(RSQLite)
 library(stringi)  #only used once, could clean up?
 #library(tables)
 
-library(raster)
+#library(raster)
+library(terra)
 library(tmap)
 library(tmaptools)
-library(OpenStreetMap)
+library(osmdata)
+#library(OpenStreetMap)
 
 library(tidyr)
 library(ggplot2)
@@ -51,8 +53,8 @@ sql <- paste0("SELECT * from lkpAlgorithms;")
 ensemble_details <- dbGetQuery(db, statement = sql)
 dbDisconnect(db)
 
-ensemble_details <- ensemble_details[ensemble_details$shortCode %in% ensemble_algos,
-                                     c("fullName","shortCode","rPackage")]
+ensemble_details <- ensemble_details[ensemble_details$algorithm_code %in% ensemble_algos,
+                                     c("full_name","algorithm_code","r_package")]
 names(ensemble_details) <- c("Name", "Code","R package")
 # ensemble_details is used in knitr file
 rm(db, sql)
@@ -77,7 +79,7 @@ summ.table <- data.frame(
            inputs$feat_count[[1]],
            inputs$feat_grp_count[[1]]
            ),
-    inputs$mn_grp_subsamp[[1]],
+    round(inputs$mn_grp_subsamp[[1]],2),##Round this because it is defaulting to 12 decimals
     inputs$tot_obs_subsamp[[1]],
     paste0(inputs$tot_bkgd_subsamp)
      ))
@@ -310,7 +312,7 @@ names(scaleVec) <- figSpecs$algos
 impPlot <- ggplot(data = varsSorted) + 
   xlab(bquote(atop("lower" %->% "greater", "importance"))) + 
   geom_path(data = varsSorted, aes(x=impVal, y=fullName, group = 1),
-            color="grey60", size = 1.5) + 
+            color="grey60", linewidth = 1.5) + 
   geom_point(data = varsImp, 
              aes(x = impVal, y = fullName, color = algorithm)) + 
   geom_path(data = varsImp, 
@@ -479,7 +481,7 @@ for (plotpi in 1:numPPl){
   }
   
  pplot <- ggplot(data = dat, aes(x=x, y=y, color = algo)) + 
-    geom_line(size = 1) +
+    geom_line(linewidth = 1) +
     xlab(evar) + 
     scale_x_continuous(limits = c(min(dat$x), max(dat$x)), 
                        expand = expansion(mult = c(0.05))) +
@@ -579,14 +581,14 @@ sql <- paste0("SELECT raster_for_metadata_figure FROM tblModelResults ",
 rasName <- dbGetQuery(db, statement = sql)[[1]]
 dbDisconnect(db)
 
-ras <- raster(paste0("model_predictions/", rasName))
+ras <- terra::rast(paste0("model_predictions/", rasName))
 
 studyAreaExtent <- st_read(file.path(loc_model,model_species,"inputs","model_input",paste0(model_run_name, "_studyArea.gpkg")), quiet = TRUE)
 referenceBoundaries <- st_read(nm_refBoundaries, quiet = TRUE) # name of state boundaries file
 
 # project to match raster, just in case
-studyAreaExtent <- st_transform(studyAreaExtent, as.character(ras@crs))
-referenceBoundaries <- st_transform(referenceBoundaries, as.character(ras@crs))
+studyAreaExtent <- st_transform(studyAreaExtent, as.character(terra::crs(ras)))
+referenceBoundaries <- st_transform(referenceBoundaries, as.character(terra::crs(ras)))
 
 # set up figure
 nclr <- 5
@@ -615,9 +617,10 @@ tmap_mode("plot")
 
 ## this is CartoDB.Positron
 mtype <- 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-basetiles <- read_osm(bbox, type = mtype, ext = 1.1)
+#basetiles <- tmaptools::read_osm(bbox, type = mtype, ext = 1.1) ##Won't work without Admin to get JavaSDK to get OPenStreetMap
 # plot it
-mapFig <- qtm(basetiles) +
+mapFig <- #qtm(basetiles) +
+  tm_basemap(mtype)+
   tm_shape(ras) +
   tm_raster(palette = clrs, title = "modeled suitability",
       labels = c("Low Habitat Suitability", rep(" ", nclr-2), "High Habitat Suitability")) +
@@ -642,12 +645,18 @@ SQLquery <- paste("Select lkpModelers.ProgramName, lkpModelers.FullOrganizationN
                   "WHERE lkpSpecies.sp_code='", model_species, "'; ", sep="")
 sdm.modeler <- dbGetQuery(db, statement = SQLquery)
 # NOTE: use column should be populated with 1/0 for sources of data used
-SQLquery <- paste("SELECT sp.sp_code, sr.ProgramName, sr.State ",
-                  "FROM lkpSpecies as sp ",
-                  "INNER JOIN mapDataSourcesToSpp as mp ON mp.EGT_ID=sp.EGT_ID ",
-                  "INNER JOIN lkpDataSources as sr ON mp.DataSourcesID=sr.DataSourcesID ",
-                  # "WHERE mp.use = 1 ",
-                  "AND sp.sp_code ='", model_species, "'; ", sep="")
+# SQLquery <- paste("SELECT sp.sp_code, sr.ProgramName, sr.State ",
+#                   "FROM lkpSpecies as sp ",
+#                   "INNER JOIN mapDataSourcesToSpp as mp ON mp.EGT_ID=sp.element_subnational ",
+#                   "INNER JOIN lkpDataSources as sr ON mp.DataSourcesID=sr.DataSourcesID ",
+#                   # "WHERE mp.use = 1 ",
+#                   "AND sp.sp_code ='", model_species, "'; ", sep="")
+
+SQLquery <- paste0("SELECT sr.ProgramName, sr.State ",
+                  "FROM lkpDataSources as sr ",
+                  
+                   "WHERE sr.DataSourcesID = 1 ;"
+                   )
 sdm.dataSources <- dbGetQuery(db, statement = SQLquery)
 sdm.dataSources <- sdm.dataSources[order(sdm.dataSources$ProgramName),]
 
@@ -737,7 +746,7 @@ NSurl <- paste("http://explorer.natureserve.org/servlet/NatureServe?searchName="
 
 ## get Model Evaluation and Use data ----
 db <- dbConnect(SQLite(),dbname=nm_db_file) 
-SQLquery <- paste("Select spdata_dataqual, spdata_abs, spdata_eval, envvar_relevance, envvar_align, process_algo, process_sens, process_rigor, process_perform, process_review, products_mapped, products_support, products_repo, iterative, spdata_dataqualNotes, spdata_absNotes, spdata_evalNotes, envvar_relevanceNotes, envvar_alignNotes, process_algoNotes, process_sensNotes, process_rigorNotes, process_performNotes, process_reviewNotes, products_mappedNotes, products_supportNotes, products_repoNotes, iterativeNotes ", 
+SQLquery <- paste("Select spdata_dataqual, spdata_abs, spdata_eval, envvar_relevance, envvar_align, process_algo, process_sens, process_rigor, process_perform, process_review, products_mapped, products_support, products_repo, interative, spdata_dataqualNotes, spdata_absNotes, spdata_evalNotes, envvar_relevanceNotes, envvar_alignNotes, process_algoNotes, process_sensNotes, process_rigorNotes, process_performNotes, process_reviewNotes, products_mappedNotes, products_supportNotes, products_repoNotes, interativeNotes ", 
                   "FROM lkpSpeciesRubric ", 
                   "WHERE sp_code ='", model_species, "'; ", sep="")
 sdm.modeluse <- dbGetQuery(db, statement = SQLquery)
@@ -805,67 +814,90 @@ knit2pdf(paste(loc_scripts,"MetadataEval_knitr.rnw",sep="/"), output=paste(model
 ## If metadata pdf creation successful, then full model run complete,
 ## so this is an appropriate time to populate Tracking DB
 # get tracking DB connection info
-trackerDsnInfo <- here("_data","databases", "hsm_tracker_connection_string_short.dsn")
+# trackerDsnInfo <- here("_data","databases", "hsm_tracker_connection_string_short.dsn")
+# 
+# 
+# ## get model cycle info from the tracking db
+# cn <- dbConnect(odbc::odbc(), .connection_string = readChar(trackerDsnInfo, file.info(trackerDsnInfo)$size))
+# # get model cycle we are on
+# sql <- paste0("SELECT v2_Elements.ID, v2_Elements.Taxonomic_Group, V2_Elements.Location_Use_Class, ",
+#               "v2_Cutecodes.cutecode, ",
+#               "v2_ModelCycle.ID, v2_ModelCycle.model_cycle ",
+#               "FROM (v2_Elements INNER JOIN v2_Cutecodes ON v2_Elements.ID = v2_Cutecodes.Elements_ID) ",
+#               "INNER JOIN v2_ModelCycle ON v2_Elements.ID = v2_ModelCycle.Elements_ID ",
+#               "WHERE (((v2_Cutecodes.cutecode)= '", ElementNames$Code, "'));")
+# 
+# model_cycle <- dbGetQuery(cn, sql)
+# names(model_cycle) <- c("Elements_ID","taxonomic_group","luc","cutecode","model_cycle_ID", "model_cycle")
+# dbDisconnect(cn)
 
 
-## get model cycle info from the tracking db
-cn <- dbConnect(odbc::odbc(), .connection_string = readChar(trackerDsnInfo, file.info(trackerDsnInfo)$size))
-# get model cycle we are on
-sql <- paste0("SELECT v2_Elements.ID, v2_Elements.Taxonomic_Group, V2_Elements.Location_Use_Class, ",
-              "v2_Cutecodes.cutecode, ",
-              "v2_ModelCycle.ID, v2_ModelCycle.model_cycle ",
-              "FROM (v2_Elements INNER JOIN v2_Cutecodes ON v2_Elements.ID = v2_Cutecodes.Elements_ID) ",
-              "INNER JOIN v2_ModelCycle ON v2_Elements.ID = v2_ModelCycle.Elements_ID ",
-              "WHERE (((v2_Cutecodes.cutecode)= '", ElementNames$Code, "'));")
+# # get most recent cycle (last row after sorting)
+# model_cycle <- model_cycle[order(model_cycle$model_cycle),]
+# model_cycle <- model_cycle[nrow(model_cycle),]
 
-model_cycle <- dbGetQuery(cn, sql)
-names(model_cycle) <- c("Elements_ID","taxonomic_group","luc","cutecode","model_cycle_ID", "model_cycle")
-dbDisconnect(cn)
+###Make a row for the model details in HOTH to be uploaded later
+#get the validation data from 
+db <- dbConnect(SQLite(),dbname=nm_db_file)
+sql <- paste0("SELECT tblModelResultsvalidationStats.model_run_name,tblModelResultsvalidationStats.it_id,tblModelResultsvalidationStats.algorithm,tblModelResultsvalidationStats.metric,tblModelResultsvalidationStats.metric_mn,lkpAlgorithms.id ",
+              "FROM tblModelResultsvalidationStats ",
+              " INNER JOIN lkpAlgorithms ON tblModelResultsvalidationStats.algorithm = lkpAlgorithms.algorithm_code ",
+              
+              "WHERE it_id = ",ElementNames$it_id," AND model_run_name = '",model_run_name,"' AND metric = 'TSS'"," AND algorithm IN (",paste0("'",ensemble_algos,"'")
+,");")
+ensemble_details <- dbGetQuery(db, statement = sql)
 
+##get environmental variable code and present|absent
 
-# get most recent cycle (last row after sorting)
-model_cycle <- model_cycle[order(model_cycle$model_cycle),]
-model_cycle <- model_cycle[nrow(model_cycle),]
+SQLquery <- paste0("SELECT tblModelResultsVarsUsed.model_run_name,tblModelResultsVarsUsed.algorithm,tblModelResultsVarsUsed.gridName, tblModelResultsVarsUsed.inFinalModel,d_environmental_variables.id ",
+"FROM tblModelResultsVarsUsed ",
+"LEFT JOIN d_environmental_variables ON tblModelResultsVarsUsed.gridName = d_environmental_variables.grid_name ",
+"WHERE model_run_name = '",
+                   model_run_name, "' AND inFinalModel = 1 AND algorithm IN (",toString(sQuote(ensemble_algos)),");")
 
-outputsDat <- model_cycle[,c("model_cycle_ID"), drop = FALSE]
-names(outputsDat) <- "model_cycle_id"
-outputsDat$model_run_name <- model_run_name
+envars_used<-dbGetQuery(db, statement = SQLquery)
+dbDisconnect(db)
+
+envars_out<-envars_used %>% group_by(model_run_name,algorithm) %>%
+                        summarise(environmental_variables=list(id))
+
+outputsDat <- ensemble_details %>% mutate(comment=paste(metric,": ",round(metric_mn,4)),is_ensemble=FALSE,
+                                          ) %>%
+              rename(model_algorithm_text=algorithm, model_version=model_run_name,model_iteration=it_id,model_algorithm=id) %>%
+              left_join(envars_out,join_by(model_version==model_run_name, model_algorithm_text==algorithm))%>%
+  mutate(environmental_variables=as.character(environmental_variables)) %>%
+  select(comment,model_version,is_ensemble,model_iteration,model_algorithm,environmental_variables)
+
 outputsDat$path_to_output <- file.path(loc_model, model_species,"outputs","model_predictions")
 outputsDat$modeling_machine <- model_comp_name
-outputsDat$comment <- NA
-outputsDat$ensemble_code <- NA
 
-# duplicate rows based on number of algorithms
-repTimes <- length(ensemble_algos)
-outputsDat <- outputsDat[rep(1, repTimes),]
 
-outputsDat$algorithm_code <- ensemble_algos
 outputsDat$output_file_name <- paste0(model_run_name,"_",ensemble_algos,".tif")  
 # decision: don't put up info about the mean suitabilities ensemble. Only use it for the metadata map
 
-outputsDat <- outputsDat[,c("model_cycle_id","model_run_name","algorithm_code","output_file_name",
-                            "path_to_output","modeling_machine","comment")]
+
 
 # push up the data
-cn <- dbConnect(odbc::odbc(), .connection_string = readChar(trackerDsnInfo, file.info(trackerDsnInfo)$size))
+db <- dbConnect(SQLite(),dbname=nm_db_file)
 
 # are these data already up there? if so, delete and re-upload
 # base it on file name
-sql <- paste0("SELECT * from v2_Outputs where output_file_name IN (",
+sql <- paste0("SELECT * from model_details_to_HOTH where output_file_name IN (",
               toString(sQuote(outputsDat$output_file_name, q = FALSE)), ");")
 
-datUpThere <- dbGetQuery(cn, sql)
+datUpThere <- dbGetQuery(db, sql)
 
 if(nrow(datUpThere) > 0){
-  sql <- paste0("DELETE from v2_Outputs where ID IN (",
-                toString(datUpThere$ID), ");")
-  dbExecute(cn, sql)
+  sql <- paste0("DELETE from model_details_to_HOTH where output_file_name IN (",
+                toString(sQuote(outputsDat$output_file_name, q = FALSE)), ");")
+  
+  dbExecute(db, sql)
 }
 
 # now upload the rows
-dbWriteTable(cn,"v2_Outputs", outputsDat, append = TRUE, row.names = FALSE)
-dbDisconnect(cn)
-rm(cn)
+dbWriteTable(db,"model_details_to_HOTH", outputsDat, append = TRUE, row.names = FALSE)
+dbDisconnect(db)
+rm(db)
 
 ## clean up ----
 #dbDisconnect(db)

@@ -176,6 +176,7 @@ gamFit1 <- train(y = gam.df.full.s[,"pres"],
 db <- dbConnect(SQLite(),dbname=nm_db_file)
 # write model input data to database before any other changes made
 tblModelInputs <- data.frame(table_code = baseName,
+                             it_id=ElementNames$it_id,
                              model_run_name = model_run_name,
                              algorithm = algo,
                              EGT_ID = ElementNames$EGT_ID, 
@@ -199,6 +200,7 @@ dbWriteTable(db, "tblModelInputs", tblModelInputs, append = TRUE)
 
 gamTuneOutput <- gamFit1$results[as.numeric(rownames(gamFit1$finalModel$tuneValue)),]
 gam.summ.table <- as.data.frame(cbind("model_run_name" = rep(model_run_name, 4), 
+                                      "it_id"=rep(ElementNames$it_id,4 ),
                                       "algorithm" = rep(algo, 4), 
                                       "metric" = c("AUC","Sensitivity","Specificity","TSS"),
                                       "metric_mn" = c(gamTuneOutput$ROC,
@@ -282,6 +284,7 @@ gam.pPlots$fullNames <- gam.EnvVars$fullName
 
 # tblModelResultsVarsUsed
 varImpDB <- data.frame(model_run_name = model_run_name, 
+                       it_id=ElementNames$it_id,
                        algorithm = algo, 
                        gridName = tolower(envvar_list), 
                        inFinalModel = 0)

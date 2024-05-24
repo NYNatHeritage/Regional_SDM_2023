@@ -377,6 +377,7 @@ db <- dbConnect(SQLite(),dbname=nm_db_file)
 
 # write model input data to database before any other changes made
 tblModelInputs <- data.frame(table_code = baseName,
+                             it_id = ElementNames$it_id,
                              model_run_name = model_run_name,
                              algorithm = algo,
                              EGT_ID = ElementNames$EGT_ID, 
@@ -399,6 +400,7 @@ dbWriteTable(db, "tblModelInputs", tblModelInputs, append = TRUE)
 
 # write validation data
 me.summ.table <- cbind("model_run_name" = rep(model_run_name, nrow(me.summ.table)), 
+                       "it_id"=rep(ElementNames$it_id, nrow(me.summ.table)),
                        "algorithm" = rep(algo, nrow(me.summ.table)), 
                        me.summ.table)
 
@@ -461,6 +463,7 @@ rm(outDat, me.EnvVars.ord)
 # write model metadata to db -----
 # tblModelResultsVarsUsed
 varImpDB <- data.frame(model_run_name = model_run_name, 
+                       it_id=ElementNames$it_id,
                        algorithm = algo, 
                        gridName = tolower(envvar_list), 
                        inFinalModel = 0)

@@ -3,7 +3,7 @@
 
 ## start with a fresh workspace with no objects loaded
 library(here)
-library(raster)
+library(terra)
 library(RSQLite)
 #library(sf)
 
@@ -18,6 +18,6 @@ setwd(file.path(loc_model, model_species,"outputs","model_predictions"))
 fileNm <- paste0(model_run_name,"_",algo,".tif")
 
 
-pd <- raster::predict(envStack, glmFit1, filename = fileNm, type = "prob", index = 2)
+pd <- terra::predict(envStack, glmFit1, filename = fileNm, type = "prob", index = 2)
 
 

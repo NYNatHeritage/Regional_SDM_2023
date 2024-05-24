@@ -3,20 +3,21 @@ library(raster)
 library(snow)
 library(smoothr) 
 library(fasterize)
-
+library(stars)
+library(terra)
 library(RODBC)
 library(RSQLite)# if using raster method for cropping instead of calling gdalwarp
 
 # needs raster list (fullL), loc_envVars, model_species
-# get range info 2024 HOTH I have already joing the multiple tables into a lkp_species table----
+# get range info 2024 HOTH I have already joing the multiple tables into a lkpSpecies table----
 ##For test
 #model_species<-"bromnott2"
 #nm_db_file<-"D:\\Git_Repos\\PROs\\BackEnd.sqlite"
 
 db <- dbConnect(SQLite(),dbname=nm_db_file)
-SQLquery <- paste0("SELECT model_area,file_name,file_path from lkp_species ",
+SQLquery <- paste0("SELECT model_area,file_name,file_path from lkpSpecies ",
               
-                   "where lkp_species.sp_code = '", model_species, "';")
+                   "where lkpSpecies.sp_code = '", model_species, "';")
 model_areas <- dbGetQuery(db, statement = SQLquery)
 dbDisconnect(db)
 rm(db)
@@ -87,33 +88,53 @@ st_write(rangeClipped, delete_dsn = TRUE,
 ## crop/mask rasters to a temp directory ----
 
 # delete temp rasts folder, create new
-temp <- paste0(options("rasterTmpDir")[1], "/", modelrun_meta_data$model_run_name)
+#temp <- paste0(options("rasterTmpDir")[1], "/", modelrun_meta_data$model_run_name)#Can't set this
+temp <- paste0("D:/temp_rasters/temp_clip_rasters", "/", modelrun_meta_data$model_run_name)#Try this
 if (dir.exists(temp)) {
   unlink(x = temp, recursive = TRUE, force = TRUE)
 }
 dir.create(temp, showWarnings = FALSE)
 
 # get proj info from 1 raster
-rtemp <- raster(paste0(loc_envVars,"/",fullL[[1]]))
-
+#rtemp <- raster(paste0(loc_envVars,"/",fullL[[1]]))
+#rtemp_stars <- stars::read_stars(paste0(loc_envVars,"/",fullL[[1]]))
+rtemp<-terra::rast(paste0(loc_envVars,"/",fullL[[1]]))
 # if debugging with already clipped rasters, paste the tmp path in
 #newL <- lapply(fullL, FUN = function(x) paste0(temp,"/",x))
 
 # clipping/masking boundary
-rng <- st_transform(rangeClipped, crs = as.character(rtemp@crs))
+rng <- st_transform(rangeClipped, crs =terra::crs(rtemp))
 rng <- st_sf(geometry = st_cast(st_union(rng), "POLYGON"))
 rng$id <- 1:length(rng$geometry)
 ext <- st_bbox(rng)
 
-# create and write the raster mask
-clipRas <- paste0(temp, "/", "clipRas.tif")
-rasExtent <- raster::crop(rtemp, extent(as(rng, "Spatial")))
-cropRas <- fasterize(rng, rasExtent)
-writeRaster(cropRas, clipRas, options="COMPRESS=NONE")
+# # create and write the raster mask (Uses raster, which is going away)
+# clipRas <- paste0(temp, "/", "clipRas.tif")
+# rasExtent <- raster::crop(rtemp, extent(as(rng, "Spatial")))
+# cropRas <- fasterize(rng, rasExtent)
+# writeRaster(cropRas, clipRas, options="COMPRESS=NONE")
+
+##Using stars- seems very slow avoid ----
+# clipRas_stars <- paste0(temp, "/", "clipRas_stars.tif")
+# range_outline <- st_transform(rng, crs = st_crs(rtemp_stars))
+# cropRas_stars <- st_crop(rtemp_stars, range_outline)
+# 
+# write_stars(cropRas_stars, clipRas_stars, options="COMPRESS=NONE")
+
+##Using terra create and write the raster mask ----
+clipRas<- paste0(temp, "/", "clipRas.tif")
+range_outline_t<-terra::project(vect(rng),terra::crs(rtemp))  ##makesure it is in EPSIG:26918
+#cropRas_terra <- terra::crop(rtemp_terra,range_outline_t,mask=TRUE) #Crop raster extent
+rasExtent<-terra::crop(rtemp,range_outline_t)#Crop raster extent
+cropRas <-terra::rasterize(range_outline_t,rasExtent)##Rasterize Polygon to RasExtent
+##If you leave out the intial crop, raserize will create masked versions with the same extent as
+##original rasters, which may be useful at some point
+terra::writeRaster(cropRas, clipRas,overwrite=TRUE)
+
 
 rm(rtemp, rng)
 
-# ## memory intensive way using clusters
+# ## memory intensive way using clusters-----
 # message("Spawning clusters for cropping")
 # # # cluster process rasters
 # cl <- snow::makeCluster(parallel::detectCores() - 10, type = "SOCK")
@@ -141,11 +162,12 @@ rm(rtemp, rng)
 # stopCluster(cl)
 # rm(cl)
 
-## less memory intensive but slower
+## less memory intensive but slower-----
 message("Creating raster subsets for species for ", length(fullL) , " environmental variables...")
 newL <- fullL
+k<-1
 
-for(k in 1:length(fullL)){
+for(k in 19:length(fullL)){
   path <- fullL[[k]]
   subnm <- gsub(paste0(loc_envVars,"/"), "", path)
   if (grepl("/",subnm)) {
@@ -154,11 +176,13 @@ for(k in 1:length(fullL)){
     dir.create(paste0(temp, "/", subdir), showWarnings = FALSE, recursive = TRUE)
   }
   nnm <- paste0(temp, "/", subnm)
-  ras <- raster::raster(path)
-  dtp <- raster::dataType(ras) # get data type, some crops are setting large values to NA
-  cropRas <- raster::raster(clipRas) # read the crop raster
-  rasAtExtent <- raster::crop(ras, raster::extent(cropRas), datatype = dtp) # crop extent to same as mask ras
-  outRas <- raster::mask(rasAtExtent, cropRas, filename = nnm, options="COMPRESS=NONE", datatype = dtp, overwrite=TRUE) # mask it
+  ras <- terra::rast(path)
+  terra::crs(ras)<-"EPSG:26918"
+  dtp <- terra::datatype(ras) # get data type, some crops are setting large values to NA
+  cropRas <- terra::rast(clipRas) # read the crop raster
+  rasAtExtent <- terra::crop(ras, terra::ext(cropRas), datatype = dtp) # crop extent to same as mask ras
+  outRas <- terra::mask(rasAtExtent, cropRas, inverse=FALSE,maskvalues=NA, datatype = dtp) # mask it
+  terra::writeRaster(outRas, nnm,overwrite=TRUE)
   newL[[k]] <- nnm
   message("cropped ", k, " of ", length(fullL), " rasters for predict.")
   }

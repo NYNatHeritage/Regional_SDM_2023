@@ -12,6 +12,7 @@ setwd(loc_envVars)
 
 # get the rasters
 raslist <- list.files(pattern = ".tif$", recursive = TRUE)
+#raslist <- list.files(pattern = ".grd$", recursive = TRUE)
 
 # get short names from the DB
 # first shorten names in subfolders
@@ -43,29 +44,30 @@ setwd(paste0(loc_model, "/", model_species, "/inputs"))
 
 shpf <- st_read(paste0("presence/", baseName, "_RanPts.shp"),quiet = T)
 
-# subset input env. vars by model type (terrestrial, shore, etc)
-db <- dbConnect(SQLite(),dbname=nm_db_file)
-# get MODTYPE
-SQLQuery <- paste0("SELECT MODTYPE m FROM lkpSpecies WHERE sp_code = '", model_species, "';")
-modType <- dbGetQuery(db, SQLQuery)$m
-
-# if modtype is both (B), flip it to A or T
-# huc_level is an aquatic only var
-# loc_envars is a terrestrial only var
-# use these to distinguish what type of model we are doing
-
-if(modType == "B"){
-  if(exists("huc_level")){
-    if(exists("loc_envars")){
-      stop("modtype is 'Both' and both aq and terrestrial vars defined. Don't know how to continue.")
-    } else {
-      modType <- "A"
-    } 
-  } else if(exists("loc_envars")){
-    modType <- "T"
-  }
-}
-
+#Not using in 2023----
+# # subset input env. vars by model type (terrestrial, shore, etc)
+ db <- dbConnect(SQLite(),dbname=nm_db_file)
+# # get MODTYPE
+# SQLQuery <- paste0("SELECT MODTYPE m FROM lkpSpecies WHERE sp_code = '", model_species, "';")
+# modType <- dbGetQuery(db, SQLQuery)$m
+# 
+# # if modtype is both (B), flip it to A or T
+# # huc_level is an aquatic only var
+# # loc_envars is a terrestrial only var
+# # use these to distinguish what type of model we are doing
+# 
+# if(modType == "B"){
+#   if(exists("huc_level")){
+#     if(exists("loc_envars")){
+#       stop("modtype is 'Both' and both aq and terrestrial vars defined. Don't know how to continue.")
+#     } else {
+#       modType <- "A"
+#     } 
+#   } else if(exists("loc_envars")){
+#     modType <- "T"
+#   }
+# }
+modType <- "T"
 # gridlistSub is a running list of variables to use. Uses fileName from lkpEnvVars
 SQLQuery <- paste0("SELECT gridName, fileName FROM lkpEnvVars WHERE use_",modType," = 1;")
 gridlistSub <- dbGetQuery(db, SQLQuery)

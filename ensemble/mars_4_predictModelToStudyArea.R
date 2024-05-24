@@ -3,7 +3,7 @@
 
 ## start with a fresh workspace with no objects loaded
 library(here)
-library(raster)
+library(terra)
 library(RSQLite)
 
 # rearrange and subset envStack
@@ -16,5 +16,5 @@ envStack_ss <- envStack[[varList]]
 setwd(file.path(loc_model, model_species,"outputs","model_predictions"))
 fileNm <- paste0(model_run_name,"_",algo,".tif")
 
-pd <- raster::predict(envStack, marsFit1, filename = fileNm, type = "prob", index = 2)
+pd <- terra::predict(envStack, marsFit1, filename = fileNm, type = "prob", index = 2)
 

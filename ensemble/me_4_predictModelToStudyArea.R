@@ -2,7 +2,7 @@
 # Purpose: create the distribution model prediction raster for a maxent model
 
 library(here)
-library(raster)
+library(terra)
 
 options(java.parameters = "-Xmx5g" )
 library(dismo)
@@ -16,5 +16,5 @@ fileNm <- paste0(model_run_name,"_",algo,".tif")
 
 cat("... predicting throughout study area \n")
 
-pd <- predict(me.out.fin, envStack_ss, filename = fileNm, silent = "TRUE")
+pd <- terra::predict(me.out.fin, envStack_ss, filename = fileNm, silent = "TRUE")
 

@@ -11,7 +11,7 @@ library(DBI)
 cutList <- list()
 
 # total number of GPs, polys, pts (subtract absence class)
-totGPs.s <- length(unique(me.df.full.s[,group$colNm])[!grepl("pseu-a",unique(me.df.full.s[,group$colNm]))])
+totGPs.s <- length(unique(me.df.full.s$group_id)[!grepl("pseu-a",unique(me.df.full.s$group_id))])
 totPolys.s <- length(unique(me.df.full.s$stratum)[!grepl("pseu-a",unique(me.df.full.s$stratum))])
 totPts.s <- nrow(me.df.full.s[me.df.full.s$pres == 1,])
 
@@ -26,7 +26,7 @@ allVotesPresPts <- me.predicted[me.predicted$pres=="1",]
 
 #get minimum training presence
 MTP <- min(allVotesPresPts[, "pred"])
-capturedGPs <- length(unique(allVotesPresPts[,group$colNm]))
+capturedGPs <- length(unique(allVotesPresPts$group_id))
 capturedPolys <- length(unique(allVotesPresPts$stratum))
 capturedPts <- nrow(allVotesPresPts)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -43,7 +43,7 @@ cutList$MTP <- list("value" = MTP, "code" = "MTP",
 #get 10 percentile training presence
 TenPctile <- quantile(allVotesPresPts$pred, prob = c(0.1))
 TenPctilePts <- allVotesPresPts[allVotesPresPts$pred >= TenPctile,]
-capturedGPs <- length(unique(TenPctilePts[,group$colNm]))
+capturedGPs <- length(unique(TenPctilePts$group_id))
 capturedPolys <- length(unique(TenPctilePts$stratum))
 capturedPts <- nrow(TenPctilePts)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -59,24 +59,24 @@ cutList$TenPctile <- list("value" = TenPctile, "code" = "TenPctile",
 
 # get min of max values by polygon (MTPP; minimum training polygon presence)
 # commented for now because aquatics doesn't have two levels of groups (for now)
-# maxInEachPoly <- aggregate(allVotesPresPts$pred,
-#                            by=list(allVotesPresPts$stratum, allVotesPresPts[,group$colNm]), max)
-# names(maxInEachPoly) <- c("stratum","group_id","pred")
-# MTPP <- min(maxInEachPoly$pred)
-# capturedGPs <- length(unique(maxInEachPoly[,group$colNm]))
-# capturedPolys <- length(unique(maxInEachPoly$stratum))
-# capturedPts <- nrow(allVotesPresPts[allVotesPresPts$pred >= MTPP,])
-# cutList$MTPP <- list("value" = MTPP, "code" = "MTPP",
-#                     "capturedGPs" = capturedGPs,
-#                     "capturedPolys" = capturedPolys,
-#                     "capturedPts" = capturedPts)
+maxInEachPoly <- aggregate(allVotesPresPts$pred,
+                           by=list(allVotesPresPts$stratum, allVotesPresPts$group_id), max)
+names(maxInEachPoly) <- c("stratum","group_id","pred")
+MTPP <- min(maxInEachPoly$pred)
+capturedGPs <- length(unique(maxInEachPoly$group_id))
+capturedPolys <- length(unique(maxInEachPoly$stratum))
+capturedPts <- nrow(allVotesPresPts[allVotesPresPts$pred >= MTPP,])
+cutList$MTPP <- list("value" = MTPP, "code" = "MTPP",
+                    "capturedGPs" = capturedGPs,
+                    "capturedPolys" = capturedPolys,
+                    "capturedPts" = capturedPts)
 
 # get min of max values by GP (MTPGP; minimum training GP presence)
 maxInEachGP <- aggregate(allVotesPresPts$pred, 
-                           by=list(allVotesPresPts[,group$colNm]), max)
+                           by=list(allVotesPresPts$group_id), max)
 names(maxInEachGP) <- c(group$colNm,"pred")
 MTPGP <- min(maxInEachGP$pred)
-capturedGPs <- length(unique(maxInEachGP[,group$colNm]))
+capturedGPs <- length(unique(maxInEachGP$group_id))
 capturedPolys <- length(unique(allVotesPresPts[allVotesPresPts$pred >= MTPGP,"stratum"]))
 capturedPts <- nrow(allVotesPresPts[allVotesPresPts$pred >= MTPGP,])
 propCaptGPs <- capturedGPs/totGPs.s
@@ -107,7 +107,7 @@ me.full.ctoff <- c(1-me.full.f.df[which.max(me.full.f.df$fmeasure),][["cutoff"]]
 names(me.full.ctoff) <- c("0","1")
 FMeasPt01 <- me.full.ctoff[2]
 z <- allVotesPresPts[allVotesPresPts$pred >= FMeasPt01,]
-capturedGPs <- length(unique(z[,group$colNm]))
+capturedGPs <- length(unique(z$group_id))
 capturedPolys <- length(unique(z$stratum))
 capturedPts <- nrow(z)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -129,7 +129,7 @@ me.full.sss <- data.frame(cutSens = unlist(me.full.sens@x.values),sens = unlist(
 me.full.sss$sss <- with(me.full.sss, sens + spec)
 maxSSS <- me.full.sss[which.max(me.full.sss$sss),"cutSens"]
 z <- allVotesPresPts[allVotesPresPts$pred >= maxSSS,]
-capturedGPs <- length(unique(z[,group$colNm]))
+capturedGPs <- length(unique(z$group_id))
 capturedPolys <- length(unique(z$stratum))
 capturedPts <- nrow(z)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -147,7 +147,7 @@ cutList$maxSSS <- list("value" = maxSSS, "code" = "maxSSS",
 me.full.sss$diff <- abs(me.full.sss$sens - me.full.sss$spec)
 eqss <- me.full.sss[which.min(me.full.sss$diff),"cutSens"]
 z <- allVotesPresPts[allVotesPresPts$pred >= eqss,]
-capturedGPs <- length(unique(z[,group$colNm]))
+capturedGPs <- length(unique(z$group_id))
 capturedPolys <- length(unique(z$stratum))
 capturedPts <- nrow(z)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -167,7 +167,7 @@ me.full.perf <- performance(me.full.rocr.pred, "tpr","fpr")
 dist.to.01 <- sqrt(me.full.perf@x.values[[1]]^2 + (1-me.full.perf@y.values[[1]])^2)
 ROCupperleft <- me.full.perf@alpha.values[[1]][[which.min(dist.to.01)]]
 z <- allVotesPresPts[allVotesPresPts$pred >= ROCupperleft,]
-capturedGPs <- length(unique(z[,group$colNm]))
+capturedGPs <- length(unique(z$group_id))
 capturedPolys <- length(unique(z$stratum))
 capturedPts <- nrow(z)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -184,7 +184,7 @@ cutList$ROC <- list("value" = ROCupperleft, "code" = "ROC",
 
 #calc a few measures on the full set, call it test set
 # total number of GPs (subtract absence class)
-totGPs.f <- length(unique(me.df.full[,group$colNm])[!grepl("pseu-a",unique(me.df.full[,group$colNm]))])
+totGPs.f <- length(unique(me.df.full$group_id)[!grepl("pseu-a",unique(me.df.full$group_id))])
 totPolys.f <- length(unique(me.df.full$stratum)[!grepl("pseu-a",unique(me.df.full$stratum))])
 totPts.f <- nrow(me.df.full.s[!me.df.full$stratum == "pseu-a",])
 
@@ -194,7 +194,7 @@ allVotesPresPts <- me.predicted[me.predicted$pres=="1",]
 
 #get minimum test set presence "Min Pres Validation Points"
 MPVP <- min(allVotesPresPts[, "pred"])
-capturedGPs <- length(unique(allVotesPresPts[,group$colNm]))
+capturedGPs <- length(unique(allVotesPresPts$group_id))
 capturedPolys <- length(unique(allVotesPresPts$stratum))
 capturedPts <- nrow(allVotesPresPts)
 propCaptGPs <- capturedGPs/totGPs.f
@@ -235,6 +235,7 @@ cutList$MPVG <- list("value" = MPVG, "code" = "MPVG",
 numThresh <- length(cutList)
 
 allThresh <- data.frame("model_run_name" = rep(modelrun_meta_data$model_run_name, numThresh),
+                        "it_id" = rep(ElementNames$it_id, numThresh),
                         "algorithm" = rep(algo, numThresh),
                         "ElemCode" = rep(ElementNames$Code, numThresh),
                 "dateTime" = rep(as.character(Sys.time()), numThresh),

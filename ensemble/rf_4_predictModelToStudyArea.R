@@ -3,7 +3,7 @@
 
 ## start with a fresh workspace with no objects loaded
 library(here)
-library(raster)
+library(terra)
 library(randomForest)
 library(RSQLite)
 library(sf)
@@ -76,19 +76,19 @@ cat("... predicting throughout study area \n")
 if (all(c("snow","parallel") %in% installed.packages())) {
   try({
     beginCluster(type = "SOCK", n=parallel:::detectCores()-10)
-    outRas <- clusterR(envStack, predict, args = list(model=rf.full, type = "prob", index = 2), verbose = TRUE)
+    outRas <- clusterR(envStack, terra::predict, args = list(model=rf.full, type = "prob", index = 2), verbose = TRUE)
     writeRaster(outRas, filename = fileNm, format = "GTiff", overwrite = TRUE)
   })
   try(endCluster())
   if (!exists("outRas")) {
     cat("Cluster processing failed. Falling back to single-core processing...\n")
-    outRas <- predict(object=envStack, model=rf.full, type = "prob", index=2,
+    outRas <- terra::predict(object=envStack, model=rf.full, type = "prob", index=2,
                       filename=fileNm, format = "GTiff", overwrite=TRUE)
   }
 # otherwise regular processing
 } else {
   cat("Using single-core processing for prediction.\nInstall package 'snow' for faster cluster (multi-core) processing.\n")
-  outRas <- predict(object=envStack, model=rf.full, type = "prob", index=2,
+  outRas <- terra::predict(object=envStack, model=rf.full, type = "prob", index=2,
                     filename=fileNm, format = "GTiff", overwrite=TRUE)
 
 }

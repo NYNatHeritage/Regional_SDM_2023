@@ -123,7 +123,7 @@ run_SDM <- function(
     stop("Need to install the following package(s) before running this function: ", paste(miss.pack, collapse = ", "), ". Run script helper/pkg_check.R to download/update.")
   }
   # check to see if GDAL and MiKTeX are installed ... by checking to see if they are in users PATH
-  if(!grepl("OSGeo4W64", Sys.getenv("PATH"))){
+  if(!grepl("OSGeo4W", Sys.getenv("PATH"))){
     stop("Need to add GDAL to your PATH environment, see https://github.com/HeritageNetwork/Regional_SDM/wiki/User-Customizations ")
   }
   if(!grepl("MiKTeX", Sys.getenv("PATH"))){

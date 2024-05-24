@@ -1,7 +1,7 @@
 # File: 4b_thresholdModel.r
 # Purpose: threshold the distribution model prediction raster
 
-library(raster)
+library(terra)
 library(sf)
 library(ROCR)
 library(RSQLite)
@@ -19,7 +19,7 @@ mars.df.full.s[mars.df.full.s$pres == "pres","pres"] <- "1"
 mars.df.full.s$pres <- as.factor(mars.df.full.s$pres)
 
 # total number of GPs, polys, pts (subtract absence class)
-totGPs.s <- length(unique(mars.df.full.s[,group$colNm])[!grepl("pseu-a",unique(mars.df.full.s[,group$colNm]))])
+totGPs.s <- length(unique(mars.df.full.s$group_id)[!grepl("pseu-a",unique(mars.df.full.s$group_id))])
 totPolys.s <- length(unique(mars.df.full.s$stratum)[!grepl("pseu-a",unique(mars.df.full.s$stratum))])
 totPts.s <- nrow(mars.df.full.s[mars.df.full.s$pres == "1",])
 
@@ -29,7 +29,7 @@ allVotesPresPts <- mars.predicted[mars.predicted$pres=="1",]
 
 #MTP ----
 MTP <- min(allVotesPresPts[, "pred"])
-capturedGPs <- length(unique(allVotesPresPts[,group$colNm]))
+capturedGPs <- length(unique(allVotesPresPts$group_id))
 capturedPolys <- length(unique(allVotesPresPts$stratum))
 capturedPts <- nrow(allVotesPresPts)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -46,7 +46,7 @@ cutList$MTP <- list("value" = MTP, "code" = "MTP",
 #get 10 percentile training presence ----
 TenPctile <- quantile(allVotesPresPts$pred, prob = c(0.1))
 TenPctilePts <- allVotesPresPts[allVotesPresPts$pred >= TenPctile,]
-capturedGPs <- length(unique(TenPctilePts[,group$colNm]))
+capturedGPs <- length(unique(TenPctilePts$group_id))
 capturedPolys <- length(unique(TenPctilePts$stratum))
 capturedPts <- nrow(TenPctilePts)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -62,10 +62,10 @@ cutList$TenPctile <- list("value" = TenPctile, "code" = "TenPctile",
 
 # # get min of max values by polygon (MTPP; minimum training polygon presence)
 # maxInEachPoly <- aggregate(allVotesPresPts$X1, 
-#                            by=list(allVotesPresPts$stratum, allVotesPresPts[,group$colNm]), max)
+#                            by=list(allVotesPresPts$stratum, allVotesPresPts$group_id), max)
 # names(maxInEachPoly) <- c("stratum","group_id","X1")
 # MTPP <- min(maxInEachPoly$X1)
-# capturedGPs <- length(unique(maxInEachPoly[,group$colNm]))
+# capturedGPs <- length(unique(maxInEachPoly$group_id))
 # capturedPolys <- length(unique(maxInEachPoly$stratum))
 # capturedPts <- nrow(allVotesPresPts[allVotesPresPts$X1 >= MTPP,])
 # cutList$MTPP <- list("value" = MTPP, "code" = "MTPP", 
@@ -75,10 +75,10 @@ cutList$TenPctile <- list("value" = TenPctile, "code" = "TenPctile",
 
 # get min of max values by GP (MTPGP; minimum training GP presence) ----
 maxInEachGP <- aggregate(allVotesPresPts$pred, 
-                         by=list(allVotesPresPts[,group$colNm]), max)
+                         by=list(allVotesPresPts$group_id), max)
 names(maxInEachGP) <- c(group$colNm,"pred")
 MTPGP <- min(maxInEachGP$pred)
-capturedGPs <- length(unique(maxInEachGP[,group$colNm]))
+capturedGPs <- length(unique(maxInEachGP$group_id))
 capturedPolys <- length(unique(allVotesPresPts[allVotesPresPts$pred >= MTPGP,"stratum"]))
 capturedPts <- nrow(allVotesPresPts[allVotesPresPts$pred >= MTPGP,])
 propCaptGPs <- capturedGPs/totGPs.s
@@ -109,7 +109,7 @@ mars.full.ctoff <- c(1-mars.full.f.df[which.max(mars.full.f.df$fmeasure),][["cut
 names(mars.full.ctoff) <- c("0","1")
 FMeasPt01 <- mars.full.ctoff[2]
 z <- allVotesPresPts[allVotesPresPts$pred >= FMeasPt01,]
-capturedGPs <- length(unique(z[,group$colNm]))
+capturedGPs <- length(unique(z$group_id))
 capturedPolys <- length(unique(z$stratum))
 capturedPts <- nrow(z)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -131,7 +131,7 @@ mars.full.sss <- data.frame(cutSens = unlist(mars.full.sens@x.values),sens = unl
 mars.full.sss$sss <- with(mars.full.sss, sens + spec)
 maxSSS <- mars.full.sss[which.max(mars.full.sss$sss),"cutSens"]
 z <- allVotesPresPts[allVotesPresPts$pred >= maxSSS,]
-capturedGPs <- length(unique(z[,group$colNm]))
+capturedGPs <- length(unique(z$group_id))
 capturedPolys <- length(unique(z$stratum))
 capturedPts <- nrow(z)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -149,7 +149,7 @@ cutList$maxSSS <- list("value" = maxSSS, "code" = "maxSSS",
 mars.full.sss$diff <- abs(mars.full.sss$sens - mars.full.sss$spec)
 eqss <- mars.full.sss[which.min(mars.full.sss$diff),"cutSens"]
 z <- allVotesPresPts[allVotesPresPts$pred >= eqss,]
-capturedGPs <- length(unique(z[,group$colNm]))
+capturedGPs <- length(unique(z$group_id))
 capturedPolys <- length(unique(z$stratum))
 capturedPts <- nrow(z)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -169,7 +169,7 @@ mars.full.perf <- performance(mars.full.rocr.pred, "tpr","fpr")
 dist.to.01 <- sqrt(mars.full.perf@x.values[[1]]^2 + (1-mars.full.perf@y.values[[1]])^2)
 ROCupperleft <- mars.full.perf@alpha.values[[1]][[which.min(dist.to.01)]]
 z <- allVotesPresPts[allVotesPresPts$pred >= ROCupperleft,]
-capturedGPs <- length(unique(z[,group$colNm]))
+capturedGPs <- length(unique(z$group_id))
 capturedPolys <- length(unique(z$stratum))
 capturedPts <- nrow(z)
 propCaptGPs <- capturedGPs/totGPs.s
@@ -185,7 +185,7 @@ cutList$ROC <- list("value" = ROCupperleft, "code" = "ROC",
 
 #calc a few measures on the full set, call it test set ----
 # total number of GPs (subtract absence class)
-totGPs.f <- length(unique(mars.df.full[,group$colNm])[!grepl("pseu-a",unique(mars.df.full[,group$colNm]))])
+totGPs.f <- length(unique(mars.df.full$group_id)[!grepl("pseu-a",unique(mars.df.full$group_id))])
 totPolys.f <- length(unique(mars.df.full$stratum)[!grepl("pseu-a",unique(mars.df.full$stratum))])
 totPts.f <- nrow(mars.df.full[mars.df.full$pres == 1,])
 
@@ -195,7 +195,7 @@ allVotesPresPts <- mars.predicted[mars.predicted$pres=="1",]
 
 #get minimum test set presence "Min Pres Validation Points" ----
 MPVP <- min(allVotesPresPts[, "pred"])
-capturedGPs <- length(unique(allVotesPresPts[,group$colNm]))
+capturedGPs <- length(unique(allVotesPresPts$group_id))
 capturedPolys <- length(unique(allVotesPresPts$stratum))
 capturedPts <- nrow(allVotesPresPts)
 propCaptGPs <- capturedGPs/totGPs.f
@@ -237,6 +237,7 @@ cutList$MPVG <- list("value" = MPVG, "code" = "MPVG",
 numThresh <- length(cutList)
 
 allThresh <- data.frame("model_run_name" = rep(modelrun_meta_data$model_run_name, numThresh),
+                        "it_id" = rep(ElementNames$it_id, numThresh),
                         "algorithm" = rep(algo, numThresh),
                         "ElemCode" = rep(ElementNames$Code, numThresh),
                         "dateTime" = rep(as.character(Sys.time()), numThresh),

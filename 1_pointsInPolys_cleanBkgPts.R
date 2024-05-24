@@ -7,7 +7,7 @@
 library(RSQLite)
 library(sf)
 library(dplyr)
-library(dplyr)
+
 
 ####
 # Assumptions
@@ -243,9 +243,9 @@ st_write(ranPts_joined_wgs84, dsn = nm.gpkg, layer = nm.pylyr, delete_layer = TR
 # rm(op)
 #Get background points in range spatially-----
 db <- dbConnect(SQLite(),dbname=nm_db_file)
-SQLquery <- paste0("SELECT model_area,file_name,file_path from lkp_species ",
+SQLquery <- paste0("SELECT model_area,file_name,file_path from lkpSpecies ",
                    
-                   "where lkp_species.sp_code = '", model_species, "';")
+                   "where lkpSpecies.sp_code = '", model_species, "';")
 model_areas <- dbGetQuery(db, statement = SQLquery)
 dbDisconnect(db)
 rm(db)
@@ -258,14 +258,14 @@ if (model_areas$model_area ==1){
 }
 
 #test
-backgShapef <- read_sf(nm_bkgPts)
+backgShapef <- read_sf(nm_bkgPts[1])
 
 #get projection info for later
 #projInfo <- backgShapef@proj4string
 
-samps<-st_intersection(backgShapef, rangeClipped)
+samps_all<-st_intersection(backgShapef, rangeClipped)
 #Need to only keep the fields from backgShakef
-samps<- samps %>%  select(names(backgShapef))
+samps<- samps_all %>% dplyr::select(names(backgShapef))
 
 # find coincident points ----
 polybuff <- st_transform(shp_expl, st_crs(samps))
@@ -440,7 +440,8 @@ print(paste0("number of background pts: ", nrow(backgSubset)))
 
 
 #bgSubsAtt <- bgSubsAtt[complete.cases(bgSubsAtt),] ##This is used when pulling backgroud pts from an sqlite
-bgSubsAtt<- backgSubset[complete.cases(backgSubset),]  ##This is used when the original selection was on attributed pts to start
+bgSubsAtt<-backgSubset[!sf::st_is_empty(backgSubset), ] %>% na.omit()
+##This is used when the original selection was on attributed pts to start
 nrow(bgSubsAtt)
 
 dbName <- paste0(loc_model, "/", model_species, "/inputs/model_input/", baseName, "_att.sqlite")
@@ -454,7 +455,7 @@ dbDisconnect(db)
 
 # also write to geopackage
 # transform to WGS84 first (see above)
-bgSubsAtt <- st_sf(bgSubsAtt, geometry = st_as_sfc(bgSubsAtt$wkt, crs = tcrs))
+#bgSubsAtt <- st_sf(bgSubsAtt, geometry = st_as_sfc(bgSubsAtt$wkt, crs = tcrs))#Not Necessary with shapefile 
 bgSubsAtt_wgs84 <- st_transform(bgSubsAtt, 4326)
 nm.pylyr <- paste0(baseName, "_bkgPts_clean")
 st_write(bgSubsAtt_wgs84, dsn = nm.gpkg, layer = nm.pylyr, delete_layer = TRUE)

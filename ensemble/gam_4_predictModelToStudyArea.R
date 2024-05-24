@@ -3,7 +3,7 @@
 
 ## start with a fresh workspace with no objects loaded
 library(here)
-library(raster)
+library(terra)
 library(RSQLite)
 #library(sf)
 
@@ -85,7 +85,7 @@ fileNm <- paste0(model_run_name,"_",algo,".tif")
 #cat("... predicting throughout study area \n")
 
 
-pd <- raster::predict(envStack, gamFit1, filename = fileNm, type = "prob", index = 2)
+pd <- terra::predict(envStack, gamFit1, filename = fileNm, type = "prob", index = 2)
 
 #this worked!  looks to be overfitting. Need to reduce env vars significantly. 
 

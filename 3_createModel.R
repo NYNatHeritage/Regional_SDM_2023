@@ -39,7 +39,7 @@ set.seed(seed)
 # connect to DB ..
 db <- dbConnect(SQLite(),dbname=nm_db_file)
 # get species info
-SQLquery <- paste("SELECT scientific_name SciName, common_name CommName, sp_code Code, broad_group Type, egt_id, g_rank, rounded_g_rank FROM lkpSpecies WHERE sp_code = '", model_species,"';", sep="")
+SQLquery <- paste("SELECT scientific_name SciName, common_name CommName, sp_code Code,id it_id, broad_group Type, element_subnational EGT_ID, g_rank, rounded_g_rank FROM lkpSpecies WHERE sp_code = '", model_species,"';", sep="")
 ElementNames <- as.list(dbGetQuery(db, statement = SQLquery)[1,])
 
 envvar_list <- dbGetQuery(db, "SELECT gridname g from lkpEnvVars;")$g
@@ -88,8 +88,8 @@ names(df.abs) <- tolower(names(df.abs))
 envvar_list <- names(df.abs)[names(df.abs) %in% envvar_list] # gets a list of environmental variables
 
 # get a list of env vars from the folder used to create the raster stack
-raslist <- list.files(path = loc_envVars, pattern = ".tif$", recursive = TRUE)
-
+#raslist <- list.files(path = loc_envVars, pattern = ".tif$", recursive = TRUE)
+raslist <- list.files(path = loc_envVars, pattern = ".grd$", recursive = TRUE)
 # get short names from the DB
 # first shorten names in subfolders (temporal vars).
 raslist.short <- unique(unlist(
@@ -165,7 +165,7 @@ numEOs <- nrow(table(df.in$group_id))
 #initialize the grouping list, and set up grouping variables
 #if we have fewer than 5 EOs, move forward with jackknifing by polygon, otherwise
 #jackknife by EO.
-eoCountLimit <- 20
+eoCountLimit <- 5
 
 group <- vector("list")
 group$colNm <- ifelse(numEOs < eoCountLimit,"stratum","group_id")
@@ -228,6 +228,7 @@ save(list = ls.save, file = paste0("rdata/", model_run_name,".Rdata"), envir = e
 # tblModelResults
 db <- dbConnect(SQLite(),dbname=nm_db_file)  
 tblModelResults <- data.frame(model_run_name = model_run_name, 
+                              it_id = ElementNames$it_id,
                               EGT_ID = ElementNames$EGT_ID, 
                               table_code = baseName,
                               internal_comments = model_comments, 

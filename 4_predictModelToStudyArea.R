@@ -3,7 +3,8 @@
 
 ## start with a fresh workspace with no objects loaded
 library(here)
-library(raster)
+#library(raster)
+library(terra)
 library(randomForest)
 library(RSQLite)
 library(sf)
@@ -47,7 +48,7 @@ setwd(loc_envVars)
 
 # find matching var rasters (with folder for temporal vars)
 raslist <- list.files(pattern = ".tif$", recursive = TRUE)
-
+#raslist <- list.files(pattern = ".grd$", recursive = TRUE)
 
 fullL <- as.list(rasFiles$fileName)
 names(fullL) <- rasFiles$gridName

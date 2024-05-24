@@ -240,6 +240,7 @@ db <- dbConnect(SQLite(),dbname=nm_db_file)
 
 # write model input data to database before any other changes made
 tblModelInputs <- data.frame(table_code = baseName,
+                             it_id=ElementNames$it_id,
                              model_run_name = model_run_name,
                              algorithm = algo,
                              EGT_ID = ElementNames$EGT_ID, 
@@ -252,7 +253,7 @@ tblModelInputs <- data.frame(table_code = baseName,
                              min_grp_subsamp = min(sampSizeVec[!names(sampSizeVec) == "pseu-a"]),
                              max_grp_subsamp = max(sampSizeVec[!names(sampSizeVec) == "pseu-a"]),
                              tot_obs_subsamp = sum(sampSizeVec[!names(sampSizeVec) == "pseu-a"]),
-                             tot_bkgd_subsamp = nrow(xgb.df.full.s[xgb.df.full.s$pres == "0",]),
+                             tot_bkgd_subsamp = sum(sampSizeVec[names(sampSizeVec) == "pseu-a"]),
                              obs_count = nrow(df.in), 
                              bkgd_count = nrow(df.abs)
 )
@@ -265,6 +266,7 @@ xgbTuneOutput <- xgbFit1$results[as.numeric(rownames(xgbFit1$finalModel$tuneValu
 
 
 xgb.summ.table <- as.data.frame(cbind("model_run_name" = rep(model_run_name, 4), 
+                      "it_id"=rep(ElementNames$it_id, 4),
                     "algorithm" = rep(algo, 4), 
                     "metric" = c("AUC","Sensitivity","Specificity","TSS"),
                     "metric_mn" = c(xgbTuneOutput$ROC,
@@ -334,6 +336,7 @@ xgb.pPlots$fullNames <- xgb.EnvVars$fullName
 # write model metadata to db
 # tblModelResultsVarsUsed
 varImpDB <- data.frame(model_run_name = model_run_name, 
+                       it_id=ElementNames$it_id,
                        algorithm = algo, 
                        gridName = tolower(envvar_list), 
                        inFinalModel = 0)
