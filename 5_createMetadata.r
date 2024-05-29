@@ -6,7 +6,7 @@
 # For knitr to work, you need MikTex installed. See http://miktex.org/
 
 # load libraries ----
-#library(ROCR)  #July 2010: order matters, see http://finzi.psych.upenn.edu/Rhelp10/2009-February/189936.html
+library(ROCR)  #July 2010: order matters, see http://finzi.psych.upenn.edu/Rhelp10/2009-February/189936.html
 library(xtable)
 library(knitr)
 library(dplyr)
@@ -18,6 +18,7 @@ library(stringi)  #only used once, could clean up?
 
 #library(raster)
 library(terra)
+library(stars)
 library(tmap)
 library(tmaptools)
 library(osmdata)
@@ -119,7 +120,7 @@ rm(vstats)
 #first get envars counts
 db <- dbConnect(SQLite(),dbname=nm_db_file)
 sql <- paste0("SELECT * from tblModelResultsVarsUsed where model_run_name = '", 
-              model_run_name, "';")
+              model_run_name, "' ;")
 varsUsedStats <- dbGetQuery(db, statement = sql)
 dbDisconnect(db)
 varsUsedStats <- varsUsedStats[varsUsedStats$inFinalModel == 1,]
@@ -225,7 +226,7 @@ for(algo in names(vuStatsList)){
 
 
 attr(vuStatsList, "subheadings") <- paste0("\\textcolor{",
-                                           names(vuStatsList), "Color}{", 
+                                           names(vuStatsList), "Color}{",
                                            "Algorithm = ",  names(vuStatsList),"}")
 
 # vuStatsList is what gets used in knitr file
@@ -262,7 +263,7 @@ knit_hooks$set(document = function(x) {
 # get the vars used for each
 db <- dbConnect(SQLite(),dbname=nm_db_file)
 sql <- paste0("SELECT * from tblModelResultsVarsUsed where model_run_name = '", 
-              model_run_name, "';")
+              model_run_name, "' ;")
 varsImp <- dbGetQuery(db, statement = sql)
 # get full names
 sql <- "SELECT gridName, fullName FROM lkpEnvVars"
@@ -323,7 +324,7 @@ impPlot <- ggplot(data = varsSorted) +
         text = element_text(size=8),
         legend.position = c(0.85,0.15)) + 
   geom_hline(yintercept = 1:nrow(varsSorted), 
-             linetype = "18", color = "grey40", size = 0.1)
+             linetype = "18", color = "grey40", linewidth = 0.1)
 
 ##
 ## build partial plots ----
@@ -489,7 +490,7 @@ for (plotpi in 1:numPPl){
     theme(axis.title.y = element_blank(), legend.position = "none",
           plot.margin = margin(t = 1, r = 5, b = 5, l = 5, unit = "pt"),
           text = element_text(size=8),
-          panel.border = element_rect(colour = "black", fill=NA, size=0.25)
+          panel.border = element_rect(colour = "black", fill=NA, linewidth=0.25)
           ) + 
     scale_color_manual(values = scaleVec)
 
@@ -582,6 +583,7 @@ rasName <- dbGetQuery(db, statement = sql)[[1]]
 dbDisconnect(db)
 
 ras <- terra::rast(paste0("model_predictions/", rasName))
+#ras<-stars::read_stars(paste0("model_predictions/", rasName))
 
 studyAreaExtent <- st_read(file.path(loc_model,model_species,"inputs","model_input",paste0(model_run_name, "_studyArea.gpkg")), quiet = TRUE)
 referenceBoundaries <- st_read(nm_refBoundaries, quiet = TRUE) # name of state boundaries file
@@ -606,7 +608,7 @@ if(studyAreaHeight < 889000){
   bbox <- bb(bbox, height = 889000, relative = FALSE)
 }
 
-tmap_options(max.raster = c("plot" = 300000, "view" = 100000))
+#tmap_options(max.raster = c(plot = 300000, view = 100000))
 tmap_mode("plot")
 # get the basemap
 # for basemap options see http://leaflet-extras.github.io/leaflet-providers/preview/
@@ -622,14 +624,14 @@ mtype <- 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
 mapFig <- #qtm(basetiles) +
   tm_basemap(mtype)+
   tm_shape(ras) +
-  tm_raster(palette = clrs, title = "modeled suitability",
+  tm_raster(palette = clrs, col.legend = tm_legend("modeled suitability"),
       labels = c("Low Habitat Suitability", rep(" ", nclr-2), "High Habitat Suitability")) +
   tm_shape(referenceBoundaries) +
   tm_borders(col = "grey", lwd = 1) +
   tm_shape(studyAreaExtent) +
     tm_borders(col = "red", lwd = 2) +
   tm_compass(north = 0, type = "arrow", position = c("left","bottom")) +
-  tm_scale_bar()
+  tm_scalebar()
 
 
 
@@ -723,10 +725,10 @@ sdm.thresh.list <- lapply(sdm.thresh.list, FUN = function(x) x[,!names(x)=="algo
 
 # no colored text
 #attr(sdm.thresh.list, "subheadings") <- paste0("Algorithm = ", names(sdm.thresh.list))
-# with colored text following lines on figures
+#with colored text following lines on figures
 attr(sdm.thresh.list, "subheadings") <- paste0("\\textcolor{",
-                          names(sdm.thresh.list), "Color}{", 
-                          "Algorithm = ", 
+                          names(sdm.thresh.list), "Color}{",
+                          "Algorithm = ",
                           names(sdm.thresh.list),"}")
 
 # can't get xtable's sanitize functions to work, manually escape % here. 
@@ -843,7 +845,7 @@ sql <- paste0("SELECT tblModelResultsvalidationStats.model_run_name,tblModelResu
               "FROM tblModelResultsvalidationStats ",
               " INNER JOIN lkpAlgorithms ON tblModelResultsvalidationStats.algorithm = lkpAlgorithms.algorithm_code ",
               
-              "WHERE it_id = ",ElementNames$it_id," AND model_run_name = '",model_run_name,"' AND metric = 'TSS'"," AND algorithm IN (",paste0("'",ensemble_algos,"'")
+              "WHERE it_id = ",ElementNames$it_id," AND model_run_name = '",model_run_name,"' AND metric = 'TSS'"," AND algorithm IN (",paste(shQuote(ensemble_algos), collapse=", ")
 ,");")
 ensemble_details <- dbGetQuery(db, statement = sql)
 
@@ -853,7 +855,7 @@ SQLquery <- paste0("SELECT tblModelResultsVarsUsed.model_run_name,tblModelResult
 "FROM tblModelResultsVarsUsed ",
 "LEFT JOIN d_environmental_variables ON tblModelResultsVarsUsed.gridName = d_environmental_variables.grid_name ",
 "WHERE model_run_name = '",
-                   model_run_name, "' AND inFinalModel = 1 AND algorithm IN (",toString(sQuote(ensemble_algos)),");")
+                   model_run_name, "' AND inFinalModel = 1 AND algorithm IN (",paste(shQuote(ensemble_algos), collapse=", "),");")
 
 envars_used<-dbGetQuery(db, statement = SQLquery)
 dbDisconnect(db)

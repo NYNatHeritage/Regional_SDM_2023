@@ -88,8 +88,8 @@ names(df.abs) <- tolower(names(df.abs))
 envvar_list <- names(df.abs)[names(df.abs) %in% envvar_list] # gets a list of environmental variables
 
 # get a list of env vars from the folder used to create the raster stack
-#raslist <- list.files(path = loc_envVars, pattern = ".tif$", recursive = TRUE)
-raslist <- list.files(path = loc_envVars, pattern = ".grd$", recursive = TRUE)
+raslist <- list.files(path = loc_envVars, pattern = ".tif$", recursive = TRUE)
+#raslist <- list.files(path = loc_envVars, pattern = ".grd$", recursive = TRUE)
 # get short names from the DB
 # first shorten names in subfolders (temporal vars).
 raslist.short <- unique(unlist(
@@ -165,7 +165,7 @@ numEOs <- nrow(table(df.in$group_id))
 #initialize the grouping list, and set up grouping variables
 #if we have fewer than 5 EOs, move forward with jackknifing by polygon, otherwise
 #jackknife by EO.
-eoCountLimit <- 5
+eoCountLimit <- 10
 
 group <- vector("list")
 group$colNm <- ifelse(numEOs < eoCountLimit,"stratum","group_id")

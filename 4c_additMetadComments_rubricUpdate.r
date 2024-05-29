@@ -48,52 +48,52 @@ dbDisconnect(db)
 # get most recent data from the tracking DB for two of the rubric table fields that may vary
 # get tracking DB data from SQL Server tables 
 
-fn <- here("_data","databases", "hsm_tracker_connection_string_short.dsn")
-cn <- dbConnect(odbc::odbc(), .connection_string = readChar(fn, file.info(fn)$size))
-
-# sql <- paste0("SELECT v2_ModelCycle.EGT_ID, v2_ModelCycle.model_cycle, ",
-#               "v2_Workflows.locality_data_eval_rubric, v2_Workflows.model_reviewed ",
-#               "FROM v2_ModelCycle ",
+# fn <- here("_data","databases", "hsm_tracker_connection_string_short.dsn")
+# cn <- dbConnect(odbc::odbc(), .connection_string = readChar(fn, file.info(fn)$size))
+# 
+# # sql <- paste0("SELECT v2_ModelCycle.EGT_ID, v2_ModelCycle.model_cycle, ",
+# #               "v2_Workflows.locality_data_eval_rubric, v2_Workflows.model_reviewed ",
+# #               "FROM v2_ModelCycle ",
+# #               "INNER JOIN v2_Workflows ON v2_ModelCycle.ID = v2_Workflows.model_cycle_ID ",
+# #               "WHERE v2_ModelCycle.EGT_ID= ", ElementNames$EGT_ID, ";")
+# 
+# #accomodate LUC, use code instead of egt-id
+# sql <- paste0("SELECT v2_Elements.ID, ",
+#               "v2_Cutecodes.Elements_ID, ",
+#               "v2_Cutecodes.cutecode, ",
+#               "v2_ModelCycle.model_cycle, ",
+#               "v2_Workflows.locality_data_eval_rubric, ",
+#               "v2_Workflows.model_reviewed ", 
+#               "FROM ((v2_Elements INNER JOIN v2_Cutecodes ON v2_Elements.ID = v2_Cutecodes.Elements_ID) ", 
+#               "INNER JOIN v2_ModelCycle ON v2_Elements.ID = v2_ModelCycle.Elements_ID) ",
 #               "INNER JOIN v2_Workflows ON v2_ModelCycle.ID = v2_Workflows.model_cycle_ID ",
-#               "WHERE v2_ModelCycle.EGT_ID= ", ElementNames$EGT_ID, ";")
-
-#accomodate LUC, use code instead of egt-id
-sql <- paste0("SELECT v2_Elements.ID, ",
-              "v2_Cutecodes.Elements_ID, ",
-              "v2_Cutecodes.cutecode, ",
-              "v2_ModelCycle.model_cycle, ",
-              "v2_Workflows.locality_data_eval_rubric, ",
-              "v2_Workflows.model_reviewed ", 
-              "FROM ((v2_Elements INNER JOIN v2_Cutecodes ON v2_Elements.ID = v2_Cutecodes.Elements_ID) ", 
-              "INNER JOIN v2_ModelCycle ON v2_Elements.ID = v2_ModelCycle.Elements_ID) ",
-              "INNER JOIN v2_Workflows ON v2_ModelCycle.ID = v2_Workflows.model_cycle_ID ",
-              "WHERE (((v2_Cutecodes.cutecode)='", ElementNames$Code, "'));")
-
-evalAndReviewStatus <- dbGetQuery(cn, sql)
-
-modelCycleData <- evalAndReviewStatus[,c("cutecode","model_cycle")]
+#               "WHERE (((v2_Cutecodes.cutecode)='", ElementNames$Code, "'));")
+# 
+# evalAndReviewStatus <- dbGetQuery(cn, sql)
+# 
+# modelCycleData <- evalAndReviewStatus[,c("cutecode","model_cycle")]
 # if more than one cycle, get the most recent cycle
-if(nrow(evalAndReviewStatus) > 1){
-  evalAndReviewStatus <- evalAndReviewStatus[order(evalAndReviewStatus$model_cycle, decreasing = TRUE),]
-  evalAndReviewStatus <- evalAndReviewStatus[1,]
-}
-
-dbDisconnect(cn)
-rm(cn)
+# if(nrow(evalAndReviewStatus) > 1){
+#   evalAndReviewStatus <- evalAndReviewStatus[order(evalAndReviewStatus$model_cycle, decreasing = TRUE),]
+#   evalAndReviewStatus <- evalAndReviewStatus[1,]
+# }
+# 
+# dbDisconnect(cn)
+# rm(cn)
 
 ## data quality ----
-dqMatrix <- data.frame("dataQuality" = c(1,2,3),
-                       "dqAttribute" = c("C","A","I"),
-                       "dqComments" = c("Data taken from outside sources and may or may not be vetted for accuracy or weighted for spatial representation.",
-                                        "Heritage Network data augmented with outside data which may or may not be vetted for accuracy or weighted for spatial representation.",
-                                        "Heritage Network (and possibly outside) data are vetted for accuracy and weighted for spatial representation."))
-dqUpdate <- dqMatrix[match(evalAndReviewStatus$locality_data_eval_rubric, dqMatrix$dataQuality),]
-#push it up to sqlite DB
-db <- dbConnect(SQLite(),dbname=nm_db_file)
-sql <- paste0("update lkpSpeciesRubric set spdata_dataqual = '", dqUpdate$dqAttribute, 
-              "', spdata_dataqualNotes = '", dqUpdate$dqComments, 
-              "' where sp_code = '", ElementNames$Code, "' ;")
-dbExecute(db, statement = sql)
+# dqMatrix <- data.frame("dataQuality" = c(1,2,3),
+#                        "dqAttribute" = c("C","A","I"),
+#                        "dqComments" = c("Data taken from outside sources and may or may not be vetted for accuracy or weighted for spatial representation.",
+#                                         "Heritage Network data augmented with outside data which may or may not be vetted for accuracy or weighted for spatial representation.",
+#                                         "Heritage Network (and possibly outside) data are vetted for accuracy and weighted for spatial representation."))
+# dqUpdate <- dqMatrix[match(evalAndReviewStatus$locality_data_eval_rubric, dqMatrix$dataQuality),]
+# #push it up to sqlite DB
+ db <- dbConnect(SQLite(),dbname=nm_db_file)
+# sql <- paste0("update lkpSpeciesRubric set spdata_dataqual = '", dqUpdate$dqAttribute, 
+#               "', spdata_dataqualNotes = '", dqUpdate$dqComments, 
+#               "' where sp_code = '", ElementNames$Code, "' ;")
+# dbExecute(db, statement = sql)
 
 ## performance ----
 # get performance data
@@ -114,39 +114,39 @@ sql <- paste0("update lkpSpeciesRubric set process_perform = '", prfmUpdate$pAtt
 dbExecute(db, statement = sql)
 
 ## model review ----
-revMatrix <- data.frame("rAttribute" = c("C","A"),
-                        "rComments" = c("Model was not reviewed by regional, taxonomic experts.",
-                                        "Model was reviewed by regional, taxonomic experts."))
-revAtt <- ifelse(!is.na(evalAndReviewStatus$model_reviewed) , "A", "C")
-revUpdate <- revMatrix[match(revAtt, revMatrix$rAttribute),]
-sql <- paste0("update lkpSpeciesRubric set process_review = '", revUpdate$rAttribute, 
-              "', process_reviewNotes = '", revUpdate$rComments, 
-              "' where sp_code = '", ElementNames$Code, "' ;")
-dbExecute(db, statement = sql)
+# revMatrix <- data.frame("rAttribute" = c("C","A"),
+#                         "rComments" = c("Model was not reviewed by regional, taxonomic experts.",
+#                                         "Model was reviewed by regional, taxonomic experts."))
+# revAtt <- ifelse(!is.na(evalAndReviewStatus$model_reviewed) , "A", "C")
+# revUpdate <- revMatrix[match(revAtt, revMatrix$rAttribute),]
+# sql <- paste0("update lkpSpeciesRubric set process_review = '", revUpdate$rAttribute, 
+#               "', process_reviewNotes = '", revUpdate$rComments, 
+#               "' where sp_code = '", ElementNames$Code, "' ;")
+# dbExecute(db, statement = sql)
+# 
+# ## iterative ----
+# iterMatrix <- data.frame("iAttribute" = c("C","A"),
+#                           "iComments" = c("Model not re-run with new or modified data.",
+#                                           "Model was re-run with new or modified data."))
+# nCycles <- nrow(modelCycleData)
+# maxCycle <- max(modelCycleData$model_cycle)
+# if(nCycles > 1){
+#   # if(nCycles == 2 & "Both" %in% modelCycleData$model_type){
+#   #   iterAtt <- "C"
+#   # } else if(TRUE %in% modelCycleData[modelCycleData$model_cycle == maxCycle, c("alternate_method","existing_model")]){
+#   #   iterAtt <- "C"
+#   # } else {
+#     iterAtt <- "A"
+#   #}
+# } else {
+#   iterAtt <- "C"
+# }
 
-## iterative ----
-iterMatrix <- data.frame("iAttribute" = c("C","A"),
-                          "iComments" = c("Model not re-run with new or modified data.",
-                                          "Model was re-run with new or modified data."))
-nCycles <- nrow(modelCycleData)
-maxCycle <- max(modelCycleData$model_cycle)
-if(nCycles > 1){
-  # if(nCycles == 2 & "Both" %in% modelCycleData$model_type){
-  #   iterAtt <- "C"
-  # } else if(TRUE %in% modelCycleData[modelCycleData$model_cycle == maxCycle, c("alternate_method","existing_model")]){
-  #   iterAtt <- "C"
-  # } else {
-    iterAtt <- "A"
-  #}
-} else {
-  iterAtt <- "C"
-}
-
-iterUpdate <- iterMatrix[match(iterAtt, iterMatrix$iAttribute),]
-sql <- paste0("update lkpSpeciesRubric set iterative = '", iterUpdate$iAttribute, 
-              "', iterativeNotes = '", iterUpdate$iComments, 
-              "' where sp_code = '", ElementNames$Code, "' ;")
-dbExecute(db, statement = sql)
+# iterUpdate <- iterMatrix[match(iterAtt, iterMatrix$iAttribute),]
+# sql <- paste0("update lkpSpeciesRubric set iterative = '", iterUpdate$iAttribute, 
+#               "', iterativeNotes = '", iterUpdate$iComments, 
+#               "' where sp_code = '", ElementNames$Code, "' ;")
+# dbExecute(db, statement = sql)
 
 ## clean up ----
 dbDisconnect(db)

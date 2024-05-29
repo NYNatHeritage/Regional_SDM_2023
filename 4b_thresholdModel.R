@@ -33,12 +33,13 @@ for(algo in ensemble_algos){
   predStackPths[algo] <- file.path(pth, fileNm)
 }
 
-predStack <- stack(predStackPths)
+#predStack <- stack(predStackPths)
+predStack <-terra::rast(unlist(predStackPths))
 
 #calculate the mean
 fileNm <- paste0(model_run_name,"_meanSuitabilities.tif")
 outName <- file.path(pth, fileNm)
-mnOut <- calc(predStack, fun=mean, filename = outName)
+mnOut <- terra::app(predStack, fun=mean, filename = outName,overwrite=TRUE)
 
 # document that this is the raster to use 
 # in the metadata pdf map

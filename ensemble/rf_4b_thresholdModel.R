@@ -5,6 +5,9 @@
 library(ROCR)
 library(RSQLite)
 library(DBI)
+library(dplyr)
+library(terra)
+#library(raster)
 
 ## Calculate different thresholds ----
 #set an empty list
@@ -240,29 +243,53 @@ m <- cbind(
   becomes = c(0, t3$order)
 )
 # reclassify (multi-core try)
-if (all(c("snow","parallel") %in% installed.packages())) {
-  try({
-    cat("Using multi-core processing...\n")
-    beginCluster(type = "SOCK")
-    rasrc <- clusterR(ras, terra::classify, args = list(rcl = m))
-  })
-  try(endCluster())
-  if (!exists("rasrc")) {
-    cat("Cluster processing failed. Falling back to single-core processing...\n")
-    rasrc <- terra::classify(ras, m)
-  }
-} else {
-  rasrc <- terra::classify(ras, m)
-}
-rasrc <- as.factor(rasrc)
-levels(rasrc) <- merge(levels(rasrc), t3, by.x = "ID", by.y = "order", all.x = T)
+# if (all(c("snow","parallel") %in% installed.packages())) {
+#   try({
+#     cat("Using multi-core processing...\n")
+#     beginCluster(type = "SOCK")
+#     rasrc <- clusterR(ras, terra::classify, args = list(rcl = m))
+#   })
+#   try(endCluster())
+#   if (!exists("rasrc")) {
+#     cat("Cluster processing failed. Falling back to single-core processing...\n")
+#     rasrc <- terra::classify(ras, m)
+#   }
+# } else {
+#   rasrc <- terra::classify(ras, m)
+# }
+rasrc <- terra::classify(ras, m)
+rasrc <- terra::as.factor(rasrc)
+levels(rasrc) <- merge(terra::levels(rasrc), t3, by.x = "ID", by.y = "order", all.x = T)
 
 outfile <- paste("model_predictions/",model_run_name,"_all_thresholds.tif", sep = "")
+terra::writeRaster(rasrc, filename=outfile, filetype="GTiff", overwrite=TRUE, datatype = "INT2U")
+
+#clean up
+rm(m, rasrc)
+gc()
+# Also pick the highest threshold that doesn't lose too many points pick MTPP unless too low
+min_pctPts<-0.5
+
+if (cutList$MTPP$prpCapPts>=min_pctPts){  ##If MTPP gets more than half the points, then use it
+  threshold_type<-"MTPP"
+  threshold<-cutList$MTPP$value
+}else{    ##If MTPP is too restrictive, use the next highest thresh that gets at least 50%
+  t4<-allThresh %>% filter(prpCapPts >min_pctPts) %>% arrange(desc(cutValue))  #Select only thresholds that meet criteria and filter for highest
+  threshold_type<-t4$cutCode[1]
+    threshold<-t4$cutValue[1]
+}
+# reclassify the raster based on the threshold into binary 0/1
+m <- cbind(
+  from = c(-Inf),
+  to = c(threshold),
+  becomes = c(0, 1)
+)
+
+rasrc <- terra::classify(ras, m)
+outfile <- paste("model_predictions/",model_run_name,"_",algo,"_",threshold_type,".tif", sep = "")
 writeRaster(rasrc, filename=outfile, filetype="GTiff", overwrite=TRUE, datatype = "INT2U")
-# 
-# #clean up
-# rm(m, rasrc)
-# 
+
+
 # ## continuous grid that drops cells below lowest calculated thresh ----
 # # reclassify the raster based on the threshold into Na below thresh
 # m <- cbind(

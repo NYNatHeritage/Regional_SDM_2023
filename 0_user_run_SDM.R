@@ -140,7 +140,7 @@ library(here)
 rm(list=ls())
 
 # set project folder and species code for this run
-model_species <- "<<model species cutecode here>>"
+model_species <- "bromnott2"
 loc_model <- here("_data", "species")
 
 # set wd and load function
@@ -154,7 +154,7 @@ source(here("helper", "run_SDM.R"))
   # to just run new model, begin at step 3 (see next example)
 run_SDM(
   begin_step = "3",
-  model_species = "leoppard",
+  model_species = "bromnott2",
   ensemble_algos = ensemble_algos,
   loc_model = loc_model,
   loc_scripts = loc_scripts
@@ -178,8 +178,8 @@ run_SDM(
 # example pick-up a model run at step 4c (metadata/comment update)
 # if starting at step 4 or later, must provide model run name to model_rdata
 run_SDM(
-  begin_step = "4b",
-  model_species = "amsothar",
+  begin_step = "5",
+  model_species = "bromnott2",
   loc_model = loc_model,
   loc_scripts = loc_scripts,
   model_rdata = max(list.files(here("_data","species",model_species,"outputs","rdata")))
@@ -195,13 +195,16 @@ run_SDM(
 
 library(here)
 rm(list=ls())
+loc_scripts <- here()
+setwd(loc_scripts)
+source(here("helper", "run_SDM.R"))
 # Use the lines below for debugging (running line by line) for a certain script
 # This loads the variables used in previous model run for the species, 
 # so you need to have started a run_SDM() run in step 2 first.
 
-# for scripts 1-3, run just the following 3 lines
+# for scripts 1-3, run just the following 3 lines-----
 
-model_species <- "<<model species cutecode here>>"
+model_species <- "bromnott2"
 
 load(here("_data","species",model_species,"runSDM_paths_most_recent.Rdata"))
 # if you want an earlier run, enter it and load it here:
@@ -215,45 +218,52 @@ load(here("_data","species",model_species,"outputs","rdata",paste0(model_rdata))
 
 
 #######
-###  loop it
+###  loop it-----
 ######
+library(here)
+rm(list=ls())
+loc_scripts <- here()
+setwd(loc_scripts)
+source(here("helper", "run_SDM.R"))
 
 x <- list.files(path = here("_data","occurrence"), pattern = "*.gpkg$")
 sppVec <- sub(".gpkg","",x)
-sppVec <- sub("_","-",sppVec)
+#sppVec <- sub("_","-",sppVec)
 
 sppVec
-# auriflav-br too big, drop for now
-sppVec <- sppVec[-1]
 
 
-for(sv in 1:length(sppVec)){
+
+for(sv in 1:1){
   model_species <- sppVec[[sv]]
     run_SDM(
       model_species = sppVec[[sv]],
       loc_scripts = here(), 
-      nm_presFile <- here("_data", "occurrence", paste0(sub("-","_",model_species), ".gpkg")),
-      nm_db_file = here("_data", "databases", "SDM_lookupAndTracking_AZ_phase1spp.sqlite"), 
+      nm_presFile <- here("_data", "occurrence", paste0(model_species, ".gpkg")),
+      nm_db_file = here("_data", "databases", "SDM_lookupAndTracking_for_NY.sqlite"), 
       loc_model = here("_data", "species"),
-      loc_envVars = here("_data","env_vars","rasterClipped"),
-      nm_bkgPts = c(here("_data","env_vars","tabular", "background_AZ.sqlite"), "background_pts"),
+      #loc_envVars = here("_data","env_vars","rasterClipped"),
+      loc_envVars = "D:/temp_rasters/Env_Var_tifs",
+      #nm_bkgPts = c(here("_data","other_spatial","feature", "10k_backgroundPts_3_att.shp")),
+      nm_bkgPts = c(here("_data","other_spatial","feature", "10k_backgroundPts_3_att.shp"),"background_pts"),
       nm_HUC_file = here("_data","other_spatial","feature","HUC10.shp"),
-      nm_refBoundaries = here("_data","other_spatial","feature", "US_States.shp"), 
+      nm_refBoundaries = here("_data","other_spatial","feature", "NY_bound_mod.shp"), 
       nm_bkgExclAreas <- NULL,
       nm_biasDistRas <- NULL,
       ensemble_algos = c("rf","xgb"),
       model_comments = "",
       metaData_comments = "",
-      modeller = "Tim Howard",
+      modeller = "Amy Conley",
       add_vars = NULL,
-      remove_vars = c("nlcdopn1", "nlcdopn10", "nlcdopn100", "impsur1", "impsur10", "impsur100",
-                      "ntm_1_01", "ntm_1_02", "ntm_1_06", "ntm_1_08", "ntm_1_09", "ntm_2_01",
-                      "ntm_2_02", "ntm_2_05", "ntm_2_06", "ntm_3_01", "ntm_3_03", "ntm_3_09",
-                      "ntm_3_12", "ntm_4_01", "ntm_4_02", "ntm_4_03", "ntm_4_05", "ntm_4_06",
-                      "ntm_5_01", "ntm_6_01", "ntm_6_02", "ntm_6_03", "ntm_6_04", "nlcdshb1",
-                      "nlcdshb10", "nlcdshb100"),
-      project_overview = "This model was developed for the Arizona Game and Fish Department.",
-      project_blurb = "Models developed for the MoBI project are intended to inform creation of a national map of biodiversity value, and we recommend additional refinement and review before these data are used for more targeted, species-specific decision making. In particular, many MoBI models would benefit from greater consideration of species data and environmental predictor inputs, a more thorough review by species experts, and iteration to address comments received.",
+      remove_vars = NULL,
+      # remove_vars = c("nlcdopn1", "nlcdopn10", "nlcdopn100", "impsur1", "impsur10", "impsur100",
+      #                 "ntm_1_01", "ntm_1_02", "ntm_1_06", "ntm_1_08", "ntm_1_09", "ntm_2_01",
+      #                 "ntm_2_02", "ntm_2_05", "ntm_2_06", "ntm_3_01", "ntm_3_03", "ntm_3_09",
+      #                 "ntm_3_12", "ntm_4_01", "ntm_4_02", "ntm_4_03", "ntm_4_05", "ntm_4_06",
+      #                 "ntm_5_01", "ntm_6_01", "ntm_6_02", "ntm_6_03", "ntm_6_04", "nlcdshb1",
+      #                 "nlcdshb10", "nlcdshb100"),
+      project_overview = "This model was developed for the New York Natural Heritage Program.",
+      project_blurb = "",
       prompt = FALSE
     )
   }

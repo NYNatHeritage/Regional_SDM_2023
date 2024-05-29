@@ -1,5 +1,4 @@
 library(sf)
-library(raster)
 library(snow)
 library(smoothr) 
 library(fasterize)
@@ -84,6 +83,11 @@ if(FALSE %in% st_is_valid(rangeClipped)){
 
 st_write(rangeClipped, delete_dsn = TRUE,
          file.path(loc_model, model_species,"inputs","model_input",paste0(model_run_name, "_studyArea.gpkg")))
+###if the model area is statewide- DO NOT waste time cropping the rasters!
+if (model_areas$model_area ==1){
+  message("Model area is statewide, skipping clipping environmental variables...")
+  newL <- fullL
+}else{
 
 ## crop/mask rasters to a temp directory ----
 
@@ -167,7 +171,7 @@ message("Creating raster subsets for species for ", length(fullL) , " environmen
 newL <- fullL
 k<-1
 
-for(k in 19:length(fullL)){
+for(k in 1:length(fullL)){
   path <- fullL[[k]]
   subnm <- gsub(paste0(loc_envVars,"/"), "", path)
   if (grepl("/",subnm)) {
@@ -202,7 +206,7 @@ for(k in 19:length(fullL)){
 #   message("cropped ", k, " of ", length(fullL), " rasters for predict.")
 # }
 
-
+}
 
 closeAllConnections()
 

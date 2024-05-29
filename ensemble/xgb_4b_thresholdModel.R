@@ -62,22 +62,31 @@ cutList$TenPctile <- list("value" = TenPctile, "code" = "TenPctile",
                           "prpCapPts"=  propCaptPts)
 
 # get min of max values by polygon (MTPP; minimum training polygon presence)
-maxInEachPoly <- aggregate(allVotesPresPts$X1,
+maxInEachPoly <- aggregate(allVotesPresPts$pred,
                            by=list(allVotesPresPts$stratum, allVotesPresPts$group_id), max)
-names(maxInEachPoly) <- c("stratum","group_id","X1")
-MTPP <- min(maxInEachPoly$X1)
+
+names(maxInEachPoly) <- c("stratum","group_id","pred")
+MTPP <- min(maxInEachPoly$pred)
 capturedGPs <- length(unique(maxInEachPoly$group_id))
-capturedPolys <- length(unique(maxInEachPoly$stratum))
-capturedPts <- nrow(allVotesPresPts[allVotesPresPts$X1 >= MTPP,])
-cutList$MTPP <- list("value" = MTPP, "code" = "MTPP",
-                    "capturedGPs" = capturedGPs,
-                    "capturedPolys" = capturedPolys,
-                    "capturedPts" = capturedPts)
+capturedPolys <- length(unique(allVotesPresPts[allVotesPresPts$pred >= MTPP,"stratum"]))
+capturedPts <- nrow(allVotesPresPts[allVotesPresPts$pred >= MTPP,])
+propCaptGPs <- capturedGPs/totGPs.s
+propCaptPolys <- capturedPolys/totPolys.s
+propCaptPts <- capturedPts/totPts.s
+cutList$MTPP <- list("value" = MTPP, "code" = "MTPP", 
+                      "capturedGPs" = capturedGPs,
+                      "capturedPolys" = capturedPolys,
+                      "capturedPts" = capturedPts,
+                      "prpCapGPs"= propCaptGPs,
+                      "prpCapPolys" = propCaptPolys,
+                      "prpCapPts"=  propCaptPts)
+
 
 # get min of max values by GP (MTPGP; minimum training GP presence)
 maxInEachGP <- aggregate(allVotesPresPts$pred, 
                            by=list(allVotesPresPts$group_id), max)
-names(maxInEachGP) <- c(group$colNm,"pred")
+names(maxInEachGP) <- c("group_id","pred")
+
 MTPGP <- min(maxInEachGP$pred)
 capturedGPs <- length(unique(maxInEachGP$group_id))
 capturedPolys <- length(unique(allVotesPresPts[allVotesPresPts$pred >= MTPGP,"stratum"]))
@@ -274,3 +283,31 @@ dbWriteTable(db, "tblModelResultsCutoffs", allThresh, append = TRUE)
 options(op)
 dbDisconnect(db)
 
+###write out 
+# Also pick the highest threshold that doesn't lose too many points pick MTPP unless too low
+min_pctPts<-0.5
+
+if (cutList$MTPP$prpCapPts>=min_pctPts){  ##If MTPP gets more than half the points, then use it
+  threshold_type<-"MTPP"
+  threshold<-cutList$MTPP$value
+}else{    ##If MTPP is too restrictive, use the next highest thresh that gets at least 50%
+  t4<-allThresh %>% filter(prpCapPts >min_pctPts) %>% arrange(desc(cutValue))  #Select only thresholds that meet criteria and filter for highest
+  threshold_type<-t4$cutCode[1]
+  threshold<-t4$cutValue[1]
+}
+# reclassify the raster based on the threshold into binary 0/1
+m <- cbind(
+  from = c(-Inf),
+  to = c(threshold),
+  becomes = c(0, 1)
+)
+
+ras <- terra::rast(paste0("model_predictions/", model_run_name,"_",algo, ".tif"))
+rasrc <- terra::classify(ras, m)
+
+outfile <- paste("model_predictions/",model_run_name,"_",algo,"_",threshold_type,".tif", sep = "")
+writeRaster(rasrc, filename=outfile, filetype="GTiff", overwrite=TRUE, datatype = "INT2U")
+#clean up
+rm(m,ras, rasrc)
+
+gc()
