@@ -67,30 +67,34 @@ library(parallel)
 
 #rearrange and subset envstack
 envStack_ss <- envStack[[names(rf.full$forest$xlevels)]]
+
+
 # run prediction ----
 setwd(file.path(loc_model, model_species,"outputs","model_predictions"))
 fileNm <- paste0(model_run_name,"_",algo,".tif")
 
 cat("... predicting throughout study area \n")
-# use parallel processing if packages installed
-if (all(c("snow","parallel") %in% installed.packages())) {
-  try({
-    beginCluster(type = "SOCK", n=parallel:::detectCores()-10)
-    outRas <- clusterR(envStack, terra::predict, args = list(model=rf.full, type = "prob", index = 2), verbose = TRUE)
-    writeRaster(outRas, filename = fileNm, format = "GTiff", overwrite = TRUE)
-  })
-  try(endCluster())
-  if (!exists("outRas")) {
-    cat("Cluster processing failed. Falling back to single-core processing...\n")
-    outRas <- terra::predict(object=envStack, model=rf.full, type = "prob", index=2,
-                      filename=fileNm, format = "GTiff", overwrite=TRUE)
-  }
-# otherwise regular processing
-} else {
+# # use parallel processing if packages installed
+# if (all(c("snow","parallel") %in% installed.packages())) {
+#   try({
+#     beginCluster(type = "SOCK", n=parallel:::detectCores()-10)
+#     outRas <- clusterR(envStack, terra::predict, args = list(model=rf.full, type = "prob", index = 2), verbose = TRUE)
+#     writeRaster(outRas, filename = fileNm, format = "GTiff", overwrite = TRUE)
+#   })
+#   try(endCluster())
+#   if (!exists("outRas")) {
+#     cat("Cluster processing failed. Falling back to single-core processing...\n")
+#     outRas <- terra::predict(object=envStack, model=rf.full, type = "prob", index=2,
+#                       filename=fileNm, format = "GTiff", overwrite=TRUE)
+#   }
+# # otherwise regular processing
+# } else {
+#   cat("Using single-core processing for prediction.\nInstall package 'snow' for faster cluster (multi-core) processing.\n")
+#   outRas <- terra::predict(object=envStack, model=rf.full, type = "prob", index=2,
+#                     filename=fileNm, format = "GTiff", overwrite=TRUE)
+# 
+# }
+# 
   cat("Using single-core processing for prediction.\nInstall package 'snow' for faster cluster (multi-core) processing.\n")
-  outRas <- terra::predict(object=envStack, model=rf.full, type = "prob", index=2,
+  outRas <- terra::predict(object=envStack_ss, model=rf.full,  type = "prob", index=2, na.rm=TRUE,
                     filename=fileNm, format = "GTiff", overwrite=TRUE)
-
-}
-
-

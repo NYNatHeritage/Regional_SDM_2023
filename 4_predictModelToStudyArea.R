@@ -11,7 +11,7 @@ library(sf)
 # library(snow)
 # library(parallel)
 
-removeTmpFiles(48) # clean old (>2days) Raster temporary files
+#removeTmpFiles(48) # clean old (>2days) Raster temporary files
 
 # load data ----
 # get the rdata file
@@ -73,7 +73,10 @@ names(fullL) <- rasFiles$gridName
 
 
 source(paste0(loc_scripts, "/helper/crop_mask_rast.R"), local = FALSE)
-envStack <- stack(newL)
+envStack <- as.numeric(terra::rast(unlist(newL)))  #terra tends to read in some variables as factors. Ensure all are numeric
+names(envStack)<-names(unlist(newL)) #Ensure the names are the same
+
+
 
 #envStack <- stack(fullL) # if not using helper/crop_mask_rast.R
 rm(fullL)
