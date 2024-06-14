@@ -157,7 +157,7 @@ for(algo in ensemble_algos){
          avg="threshold", 
          add = TRUE)
   }
-  if(algo == "me" & exists("me.perf")){
+  else if(algo == "me" & exists("me.perf")){
     specs <- figSpecs[match(algo,figSpecs$algos),]
     plot(me.perf, 
          lwd=specs$lwd, 
@@ -165,7 +165,7 @@ for(algo in ensemble_algos){
          avg="threshold", 
          add = TRUE)
   }
-  if(algo == "xgb"){
+  else if(algo == "xgb"){
     xgb.pred <- prediction(xgbFit1$pred$pres, xgbFit1$pred$obs)
     xgb.perf <- performance(xgb.pred, "tpr","fpr")
     specs <- figSpecs[match(algo,figSpecs$algos),]
@@ -356,7 +356,7 @@ This model was built using a methodology developed through collaboration among t
 \end{minipage}%
 \begin{minipage}[c]{0.75\linewidth}
 Please cite this document and its associated SDM as: \\
-New York Natural Heritage Program. \Sexpr{format(Sys.Date(), "%Y")}. Species distribution model for \Sexpr{as.character(ElementNames$CommName)} (\textit{\Sexpr{as.character(ElementNames$SciName)}}). Created on \Sexpr{format(Sys.Date(), "%d %b %Y")}. Albany, NY.
+NatureServe and Heritage Network Partners. \Sexpr{format(Sys.Date(), "%Y")}. Species distribution model for \Sexpr{as.character(ElementNames$CommName)} (\textit{\Sexpr{as.character(ElementNames$SciName)}}). Created on \Sexpr{format(Sys.Date(), "%d %b %Y")}. Arlington, VA with Network partners from VA, PA, and NY.
 \end{minipage}
 }
 

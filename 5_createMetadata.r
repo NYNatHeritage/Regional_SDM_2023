@@ -496,7 +496,7 @@ for (plotpi in 1:numPPl){
 
   # create the density plot
   densplot <- ggplot(data = densdat, aes(x = x, color = factor(pres, labels = c("background","presence")))) + 
-    geom_density(size = 0.5, show.legend = FALSE) + 
+    geom_density(linewidth = 0.5, show.legend = FALSE) + 
     # scale_x_continuous(limits = c(min(densdat$x), max(densdat$x)),
     #                    expand = expansion(mult = c(0.05)),
     #                    breaks = NULL) +
@@ -868,7 +868,7 @@ outputsDat <- ensemble_details %>% mutate(comment=paste(metric,": ",round(metric
               rename(model_algorithm_text=algorithm, model_version=model_run_name,model_iteration=it_id,model_algorithm=id) %>%
               left_join(envars_out,join_by(model_version==model_run_name, model_algorithm_text==algorithm))%>%
   mutate(environmental_variables=as.character(environmental_variables)) %>%
-  select(comment,model_version,is_ensemble,model_iteration,model_algorithm,environmental_variables)
+  dplyr::select(comment,model_version,is_ensemble,model_iteration,model_algorithm,environmental_variables)
 
 outputsDat$path_to_output <- file.path(loc_model, model_species,"outputs","model_predictions")
 outputsDat$modeling_machine <- model_comp_name

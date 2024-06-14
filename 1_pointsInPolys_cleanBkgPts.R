@@ -461,4 +461,4 @@ nm.pylyr <- paste0(baseName, "_bkgPts_clean")
 st_write(bgSubsAtt_wgs84, dsn = nm.gpkg, layer = nm.pylyr, delete_layer = TRUE)
 
 
-rm(db, do, dt, qry, tmpTableName)
+rm(db, do, dt)

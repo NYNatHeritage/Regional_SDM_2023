@@ -89,7 +89,7 @@ predfun <- function(m, d){
   predict(m,y)
 }
 
-pd <- terra::predict(envStack_ss, xgb.full, filename = fileNm, fun=predfun, index = 2)
+pd <- terra::predict(envStack_ss, xgb.full, filename = fileNm, fun=predfun, overwrite=TRUE)
 
 #, type = "response", index = 2)
 

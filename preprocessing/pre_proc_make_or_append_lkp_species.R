@@ -2,7 +2,7 @@
 ##Getting the tables required for this scripts requires copying data down from the HOTH database.
 ##Because we are not allowed to back up that information to a public github, contact Amy Conley for help in getting these data.
 
-lkp_species<-it_data %>% filter(iteration_date =="2023-12-21") %>%
+lkp_species<-it_data %>% filter(iteration_date =="2024-06-11") %>%
   select(id,comment,cute_base,cute_seq,iteration_date,modeled_element,model_area)%>%
   left_join(me_data,by = join_by(modeled_element == id)) %>%
   left_join(biotics_subnational_data[c("element_subnational_id","s_primary_common_name","name_type_cd","g_rank","s_rank")],
@@ -22,7 +22,7 @@ lkp_species<-it_data %>% filter(iteration_date =="2023-12-21") %>%
 db_location<-"D:\\Git_Repos\\PROs\\BackEnd.sqlite"
 db_location<-"H:\\Please_Do_Not_Delete_me\\PROS\\Regional_SDM_2023\\_data\\databases\\SDM_lookupAndTracking_for_NY.sqlite"
 cn <- dbConnect(SQLite(),dbname=db_location)
-dbWriteTable(cn, "lkp_species", lkp_species,overwrite=TRUE)
+dbWriteTable(cn, "lkpSpecies", lkp_species,append=TRUE)
 
 ###Update the lkpEnvVars table to add HOTH_id to env
 SQLquery<-"SELECT * from lkpEnvVars;"

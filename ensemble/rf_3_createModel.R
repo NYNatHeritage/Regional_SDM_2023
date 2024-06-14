@@ -64,6 +64,9 @@ mtry <- tryCatch(
 )
 rm(rowCounts)
 
+####If the code breaks becuse OOB Error rates are still 0- set mtry to the sqrt of the numberof indvars
+##mtry<-trunc((length(indVarCols)^0.5))
+
 ###
 # Remove the least important env vars ----
 ##
@@ -328,7 +331,11 @@ if(length(group$vals)>1){
 	    maxSSS <- sss[which.max(sss$sss),"cutSens"]/numCores
 	    cutval.rf <- c(1-maxSSS, maxSSS)
 	    names(cutval.rf) <- c("0","1")
-	  } else {
+	  }else if(MTP == 1) {
+	    fake_MTP<-0.75
+	    cutval.rf <- c(1-fake_MTP, fake_MTP)
+	    names(cutval.rf) <- c("0","1")
+	  }else {
 	    cutval.rf <- c(1-MTP, MTP)
 	    names(cutval.rf) <- c("0","1")
 	  }

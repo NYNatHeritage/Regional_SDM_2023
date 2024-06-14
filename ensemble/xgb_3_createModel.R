@@ -189,7 +189,8 @@ xgbfitControl <- trainControl(
   number = 1,
   summaryFunction = twoClassSummary,
   classProbs = TRUE,
-  savePredictions = TRUE
+  savePredictions = TRUE,
+ 
 )
 
 # caret seems to need this
@@ -214,6 +215,7 @@ xgb.df.full.s$pres <- as.factor(xgb.df.full.s$pres)
 xgbFit1 <- train(pres ~ ., data = xgb.df.full.s[,c(depVarCol,indVarCols)],
                  method = "xgbTree",
                  trControl = xgbfitControl,
+                 
                  metric = "ROC")
 
 # flip *back* for raw xgb
@@ -231,6 +233,7 @@ df.full.s.xgb <- xgb.DMatrix(as.matrix(xgb.df.full.s[,indVarCols]),
 
 xgb.full <- xgb.train(params=xgbFit1$finalModel$params, 
                              data = df.full.s.xgb,
+                            
                              nrounds = 100)
 
 

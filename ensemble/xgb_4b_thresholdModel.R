@@ -297,10 +297,11 @@ if (cutList$MTPP$prpCapPts>=min_pctPts){  ##If MTPP gets more than half the poin
 }
 # reclassify the raster based on the threshold into binary 0/1
 m <- cbind(
-  from = c(-Inf),
-  to = c(threshold),
+  from = c(-Inf,threshold),
+  to = c(threshold,Inf),
   becomes = c(0, 1)
 )
+
 
 ras <- terra::rast(paste0("model_predictions/", model_run_name,"_",algo, ".tif"))
 rasrc <- terra::classify(ras, m)
