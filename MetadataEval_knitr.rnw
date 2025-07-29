@@ -45,7 +45,7 @@ Habitat Suitability Model for \Sexpr{as.character(ElementNames$CommName)} (\text
   \LARGE \textit{\Sexpr{as.character(ElementNames[[1]])}} \\ 
   \normalsize Habitat Suitability Model (HSM) assessment metrics and metadata \\
   Common name: \href{\Sexpr{as.character(NSurl)}}{\Sexpr{as.character(ElementNames[[2]])}}  \\
-  Grank: \Sexpr{ paste(as.character(ElementNames[[7]])," - ",as.character(grank_desc[[2]]), sep="")}\\
+  Grank: \Sexpr{ paste(as.character(ElementNames[[8]])," - ",as.character(grank_desc[[2]]), sep="")}\\
   Date: \Sexpr{format(Sys.Date(), "%d %b %Y")} \\  
   Code: \Sexpr{as.character(ElementNames$Code)} (EGT_ID: \Sexpr{as.character(ElementNames$EGT_ID)})
 \end{minipage}  \hfill   

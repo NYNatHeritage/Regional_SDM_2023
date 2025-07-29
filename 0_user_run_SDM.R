@@ -140,7 +140,7 @@ library(here)
 rm(list=ls())
 
 # set project folder and species code for this run
-model_species <- "bromnott2"
+model_species <- "didyferr1"
 loc_model <- here("_data", "species")
 
 # set wd and load function
@@ -153,8 +153,8 @@ source(here("helper", "run_SDM.R"))
   # to add/remove variables, begin at step 2
   # to just run new model, begin at step 3 (see next example)
 run_SDM(
-  begin_step = "3",
-  model_species = "bromnott2",
+  begin_step = "2",
+  model_species = "crepintr0",
   ensemble_algos = ensemble_algos,
   loc_model = loc_model,
   loc_scripts = loc_scripts
@@ -166,7 +166,7 @@ run_SDM(
   # if starting at step 4 or later, must provide model run name to model_rdata
 run_SDM(
   begin_step = "4",
-  model_species = "leoppard",
+  model_species = "didyferr1",
   loc_model = loc_model,
   loc_scripts = loc_scripts,
   model_rdata = max(list.files(here("_data","species",model_species,"outputs","rdata"))),
@@ -204,7 +204,7 @@ source(here("helper", "run_SDM.R"))
 
 # for scripts 1-3, run just the following 3 lines-----
 
-model_species <- "bromnott2"
+model_species <-"didyferr2"
 
 load(here("_data","species",model_species,"runSDM_paths_most_recent.Rdata"))
 # if you want an earlier run, enter it and load it here:
@@ -229,12 +229,14 @@ source(here("helper", "run_SDM.R"))
 x <- list.files(path = here("_data","occurrence"), pattern = "*.gpkg$")
 sppVec <- sub(".gpkg","",x)
 #sppVec <- sub("_","-",sppVec)
+re_run<-c("bromnott3","calstrin6","carecumu4","carelupu6","chenfogg2","clinumbe1","crepintr1","cystprot1","didyferr2","drabarab3","dryofrag3","eurylong7",
+          "hippvulg4","melaeryt3","polydoug4","polynutt1","pycnclin3","pycntorr2","saxiaizo2","silcarpe4","sparnata3")
 
-sppVec
+sppVec<-re_run
 
 
 
-for(sv in 1:1){
+for(sv in 7:7){
   model_species <- sppVec[[sv]]
     run_SDM(
       model_species = sppVec[[sv]],

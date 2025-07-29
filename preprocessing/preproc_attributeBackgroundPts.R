@@ -12,12 +12,13 @@ library(snowfall)
 
 # path where .tif env. var rasters are stored
 pathToRas <- here("_data","env_vars","rasterClipped")
+pathToRas<-"D:\\temp_rasters\\Env_Var_Copy"
 # path to output tables
 pathToTab <- here("_data","env_vars","tabular")
 # background points table name (this should be already created with preproc_makeBackgroundPoints.R)
-pts_table <- "background_pts"
+pts_table <- "background_pts_200k"
 # lkpEnvVars database
-dbLookup <- dbConnect(SQLite(), here("_data","databases","SDM_lookupAndTracking_AZ.sqlite"))
+dbLookup <- dbConnect(SQLite(), here("_data","databases","SDM_lookupAndTracking_for_NY.sqlite"))
 
 ## create a stack from all envvars ----
 setwd(pathToRas)
@@ -69,7 +70,7 @@ s.list <- unstack(envStack)
 names(s.list) <- names(envStack)
 
 ## Get random points table ----
-db <- dbConnect(SQLite(), paste0(pathToTab, "/", "background_AZ_test.sqlite"))
+db <- dbConnect(SQLite(), paste0(pathToTab, "/", "background_200k.sqlite"))
 
 tcrs <- dbGetQuery(db, paste0("SELECT epsg e from lkpCRS where table_name = '", pts_table, "';"))$e
 
@@ -176,6 +177,7 @@ nrow(bkgd_att)
 bk <- merge(bkgd, bkgd_att) #need to spatial info over to att
 samps <- st_sf(bk, geometry = st_as_sfc(bk$wkt, crs = tcrs))
 # do the extract
+
 att <- extract(envStack, samps, method="simple")
 
 #sampsAtt <- as.data.frame(cbind(fid = as.integer(samps$fid), att))
@@ -189,7 +191,21 @@ dbWriteTable(db, paste0(pts_table, "_att"), sampsAtt, overwrite = TRUE)
 
 
 ###
+##Method 5 -terra
+envStack <- terra::rast(raslist)
+names(envStack)<-names(gridlist)
+
+#tpts_utm<-terra::project(terra::vect(samps),"epsg:26918")
+att<-terra::extract(envStack,samps)
+
+sampsAtt <- st_sf(cbind(data.frame(samps), data.frame(att)))
+dbWriteTable(db, paste0(pts_table, "_att"), sampsAtt, overwrite = TRUE)
+
+points_attributed <- st_sf(cbind(data.frame(shpf), data.frame(e.df)))
+
+###
 dbWriteTable(db, paste0(pts_table, "_att"), sampsAtt, overwrite = FALSE, append = TRUE)
+st_write(sampsAtt, "H:\\Please_Do_Not_Delete_me\\PROS\\Regional_SDM_2023\\_data\\other_spatial\\feature\\200k_background_pts_att.shp")
 
 
 dbDisconnect(db)

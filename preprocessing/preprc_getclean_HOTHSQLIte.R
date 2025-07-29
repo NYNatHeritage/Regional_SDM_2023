@@ -63,6 +63,21 @@ mas_url<-"https://hoth.nynhp.org/api/model-areas/"
 table_modelareas<-hth_fullTable(api_sess = api_session, table_url = mas_url )
 model_areas_out<-table_modelareas %>% select(!(created_by:modified_at)) %>% arrange(id)
 
+# get all model details----
+details_url<-"https://hoth.nynhp.org/api/model-detail-records/"
+table_modeldetails<-hth_fullTable(api_sess = api_session, table_url = details_url )
+table_modeldetails$environmental_variables<-as.character(table_modeldetails$environmental_variables)
+
+# get all envar HOTH details----
+envars_url<-"https://hoth.nynhp.org/api/d-environmental-variables/"
+table_envars<-hth_fullTable(api_sess = api_session, table_url = envars_url )
+
+# get all algo HOTH details----
+algo_url<-"https://hoth.nynhp.org/api/d-algorithms/"
+table_algos<-hth_fullTable(api_sess = api_session, table_url = algo_url )
+
+
+
 
 library(RODBC)
 library(RSQLite)
@@ -93,3 +108,21 @@ dbWriteTable(db, "model_areas", model_areas_out,overwrite=TRUE)
 
 #Write the table,is it doesn't exist it will be created Model Areas
 dbWriteTable(db, "biotics_subnational", biotics_subnational_data,overwrite=TRUE)
+
+#Write the table,is it doesn't exist it will be created Model Details
+dbWriteTable(db, "model_details", table_modeldetails,overwrite=TRUE)
+
+#Write the table,is it doesn't exist it will be created Environmental Variables
+dbWriteTable(db, "d_environmental_variables", table_envars,overwrite=TRUE)
+
+#Write the table,is it doesn't exist it will be created Environmental Variables
+dbWriteTable(db, "d_algos", table_algos,overwrite=TRUE)
+
+db_location<-"H:\\Please_Do_Not_Delete_me\\PROS\\Regional_SDM_2023\\_data\\databases\\SDM_lookupAndTracking_for_NY.sqlite"
+cn <- dbConnect(SQLite(),dbname=db_location)
+library(dplyr)
+table_algos<-table_algos %>% select(!created_by:comment)
+dbWriteTable(cn, "lkpAlgorithms", table_algos,overwrite=TRUE)
+
+table_envars<-table_envars %>% select(!created_by:modified_at)
+dbWriteTable(cn, "d_environmental_variables", table_envars,overwrite=TRUE)

@@ -12,12 +12,12 @@ library(RSQLite)
 setwd(here("_data","other_spatial","feature"))
 # states <- st_read("US_States.shp")
 stdyAreaHucs <- st_read("HUC10_full_bkg_area.gpkg",  "HUC10_bkg")
-
+stdyAreaHucs <- st_read("NY_bound_mod.shp")
 # continual problems with ESRI Albers. Set it here manually
 # ignore the warning
-# st_crs(stdyArea) <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+st_crs(stdyAreaHucs) <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 suppressWarnings(st_crs(stdyAreaHucs) <- 42303)
-
+suppressWarnings(st_crs(stdyAreaHucs) <- 26918)
 # #study area is a dissolved representation
 sa <- st_union(stdyAreaHucs)
 
@@ -25,7 +25,7 @@ sa <- st_union(stdyAreaHucs)
 numpts <- 200000
 
 # new/existing db table name (overwritten)
-table <- "background_pts"
+table <- "background_pts_200k"
 
 # path to background points shapefile
 pathToPts <- here("_data","env_vars","background")
@@ -37,13 +37,15 @@ pathToTab <- here("_data","env_vars","tabular")
 samps1 <- st_sample(sa, size = numpts)
 samps1 <- st_sf(fid = 1:length(samps1), geometry = samps1)
 samps <- st_join(samps1, stdyAreaHucs, join = st_intersects)[c("fid", "HUC10")]
+samps<-samps1
 names(samps) <- c("fid", "huc10", "geometry")
 
 # create DF
-sampsDF <- data.frame(fid = samps$fid, huc10 = samps$huc10, wkt = st_as_text(samps$geometry))
+#sampsDF <- data.frame(fid = samps$fid, huc10 = samps$huc10, wkt = st_as_text(samps$geometry))
+sampsDF <- data.frame(fid = samps$fid, wkt = st_as_text(samps$geometry))
 
 # send to database
-db <- dbConnect(SQLite(), paste0(pathToTab, "/", "background_AZ.sqlite"))
+db <- dbConnect(SQLite(), paste0(pathToTab, "/", "background_200k.sqlite"))
 tp <- as.vector("INTEGER")
 names(tp) <- "fid"
 dbWriteTable(db, table, sampsDF, overwrite = TRUE, field.types = tp)
